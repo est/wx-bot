@@ -1,24 +1,6 @@
 "use client";
 
-interface MessageItem {
-  type: number;
-  text_item?: { text?: string };
-  image_item?: { cdn_media?: { encrypt_query_param?: string; aes_key?: string; full_url?: string } };
-  file_item?: { cdn_media?: { encrypt_query_param?: string; aes_key?: string; full_url?: string } };
-  video_item?: { cdn_media?: { encrypt_query_param?: string; aes_key?: string; full_url?: string } };
-  voice_item?: { cdn_media?: { encrypt_query_param?: string; aes_key?: string; full_url?: string } };
-}
-
-interface WeixinMessage {
-  from_user_id?: string;
-  to_user_id?: string;
-  message_id?: number;
-  session_id?: string;
-  message_type?: number;
-  context_token?: string;
-  item_list?: MessageItem[];
-  create_time_ms?: number;
-}
+import type { WeixinMessage, MessageItem } from "@/lib/weixin/types";
 
 function renderItem(item: MessageItem, index: number) {
   if (item.type === 1 && item.text_item?.text) {

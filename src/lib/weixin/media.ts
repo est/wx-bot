@@ -24,7 +24,7 @@ export async function uploadMedia(
   const filesize = encrypted.length;
   const aeskeyB64 = aeskey.toString("base64");
 
-  let mediaType = UploadMediaType.FILE;
+  let mediaType: number = UploadMediaType.FILE;
   if (mimeType.startsWith("image/")) mediaType = UploadMediaType.IMAGE;
   else if (mimeType.startsWith("video/")) mediaType = UploadMediaType.VIDEO;
   else if (mimeType.startsWith("audio/")) mediaType = UploadMediaType.VOICE;
@@ -42,7 +42,7 @@ export async function uploadMedia(
     await fetch(uploadResp.upload_full_url, {
       method: "PUT",
       headers: { "Content-Type": "application/octet-stream" },
-      body: encrypted,
+      body: new Uint8Array(encrypted),
     });
   }
 

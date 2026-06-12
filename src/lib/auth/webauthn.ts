@@ -63,7 +63,7 @@ export async function verifyRegister(response: RegistrationResponseJSON) {
     throw new Error("Registration verification failed");
   }
 
-  const { credential } = verification.registrationInfo;
+  const { credential, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
   const userId = randomUUID();
 
   await db.insert(users).values({
@@ -78,8 +78,8 @@ export async function verifyRegister(response: RegistrationResponseJSON) {
     webauthnUserId,
     publicKey: Buffer.from(credential.publicKey),
     counter: credential.counter,
-    deviceType: credential.credentialDeviceType,
-    backedUp: credential.credentialBackedUp,
+    deviceType: credentialDeviceType,
+    backedUp: credentialBackedUp,
     transports: credential.transports?.join(",") ?? "",
   });
 
@@ -120,9 +120,9 @@ export async function verifyLogin(response: AuthenticationResponseJSON) {
     expectedChallenge,
     expectedOrigin: ORIGIN,
     expectedRPID: RP_ID,
-    authenticator: {
-      credentialID: passkeyRecord.id,
-      credentialPublicKey: new Uint8Array(passkeyRecord.publicKey),
+    credential: {
+      id: passkeyRecord.id,
+      publicKey: new Uint8Array(passkeyRecord.publicKey),
       counter: passkeyRecord.counter,
       transports: passkeyRecord.transports
         ?.split(",")

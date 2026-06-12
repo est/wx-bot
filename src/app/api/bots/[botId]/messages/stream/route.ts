@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { requireSession, requireBotOwner } from "@/lib/auth/guard";
 import { pollUpdates } from "@/lib/weixin/stream";
+import type { WeixinMessage } from "@/lib/weixin/client";
 
 export async function GET(
   req: NextRequest,
@@ -37,7 +38,7 @@ export async function GET(
       try {
         for await (const msgs of pollUpdates(botId, abortController.signal)) {
           if (closed) break;
-          const sanitized = msgs.map((msg) => ({
+          const sanitized = msgs.map((msg: WeixinMessage) => ({
             message_id: msg.message_id,
             from_user_id: msg.from_user_id,
             to_user_id: msg.to_user_id,

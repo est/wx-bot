@@ -4,17 +4,7 @@ import { useEffect, useState, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import ChatView from "@/components/ChatView";
 import MessageInput from "@/components/MessageInput";
-
-interface WeixinMessage {
-  from_user_id?: string;
-  to_user_id?: string;
-  message_id?: number;
-  session_id?: string;
-  message_type?: number;
-  context_token?: string;
-  item_list?: Record<string, unknown>[];
-  create_time_ms?: number;
-}
+import type { WeixinMessage } from "@/lib/weixin/types";
 
 export default function BotChatPage({
   params,

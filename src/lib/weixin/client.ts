@@ -6,9 +6,11 @@ export {
   sendTyping,
   apiPostFetch,
   apiGetFetch,
-} from "@tencent-weixin/openclaw-weixin/src/api/api";
+  buildBaseInfo,
+} from "@tencent-weixin/openclaw-weixin/dist/src/api/api.js";
 
 export type {
+  BaseInfo,
   WeixinMessage,
   MessageItem,
   CDNMedia,
@@ -22,12 +24,11 @@ export type {
   SendMessageReq,
   GetUploadUrlReq,
   GetUploadUrlResp,
-  BaseInfo,
-} from "@tencent-weixin/openclaw-weixin/src/api/types";
+} from "./types";
 
 export {
   MessageType,
   MessageItemType,
   MessageState,
   UploadMediaType,
-} from "@tencent-weixin/openclaw-weixin/src/api/types";
+} from "./types";
