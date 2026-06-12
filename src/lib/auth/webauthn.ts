@@ -15,15 +15,20 @@ import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { getSession } from "./session";
 
-const RP_ID = process.env.RP_ID || "localhost";
-const RP_NAME = process.env.RP_NAME || "wx-bot";
-const ORIGIN = process.env.ORIGIN || "http://localhost:3000";
+export function getRpId() {
+  return process.env.VERCEL_URL || process.env.RP_ID || "localhost";
+}
 
-export async function generateRegisterOptions(userName: string) {
+export function getOriginFromRequest(req: Request) {
+  const url = new URL(req.url);
+  return url.origin;
+}
+
+export async function generateRegisterOptions(origin: string, userName: string) {
   const webauthnUserId = Buffer.from(randomUUID()).toString("base64url");
   const options = await generateRegistrationOptions({
-    rpName: RP_NAME,
-    rpID: RP_ID,
+    rpName: "wx-bot",
+    rpID: getRpId(),
     userName,
     attestationType: "none",
     excludeCredentials: [],
@@ -42,7 +47,7 @@ export async function generateRegisterOptions(userName: string) {
   return { options, webauthnUserId };
 }
 
-export async function verifyRegister(response: RegistrationResponseJSON) {
+export async function verifyRegister(origin: string, response: RegistrationResponseJSON) {
   const session = await getSession();
   const expectedChallenge = session.challenge;
   const webauthnUserId = session.webauthnUserId;
@@ -55,8 +60,8 @@ export async function verifyRegister(response: RegistrationResponseJSON) {
   const verification = await verifyRegistrationResponse({
     response,
     expectedChallenge,
-    expectedOrigin: ORIGIN,
-    expectedRPID: RP_ID,
+    expectedOrigin: origin,
+    expectedRPID: getRpId(),
   });
 
   if (!verification.verified || !verification.registrationInfo) {
@@ -94,7 +99,7 @@ export async function verifyRegister(response: RegistrationResponseJSON) {
 
 export async function generateLoginOptions() {
   const options = await generateAuthenticationOptions({
-    rpID: RP_ID,
+    rpID: getRpId(),
     userVerification: "preferred",
   });
 
@@ -105,7 +110,7 @@ export async function generateLoginOptions() {
   return options;
 }
 
-export async function verifyLogin(response: AuthenticationResponseJSON) {
+export async function verifyLogin(origin: string, response: AuthenticationResponseJSON) {
   const session = await getSession();
   const expectedChallenge = session.challenge;
   if (!expectedChallenge) throw new Error("Challenge not found");
@@ -118,8 +123,8 @@ export async function verifyLogin(response: AuthenticationResponseJSON) {
   const verification = await verifyAuthenticationResponse({
     response,
     expectedChallenge,
-    expectedOrigin: ORIGIN,
-    expectedRPID: RP_ID,
+    expectedOrigin: origin,
+    expectedRPID: getRpId(),
     credential: {
       id: passkeyRecord.id,
       publicKey: new Uint8Array(passkeyRecord.publicKey),

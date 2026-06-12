@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateRegisterOptions } from "@/lib/auth/webauthn";
+import { generateRegisterOptions, getOriginFromRequest } from "@/lib/auth/webauthn";
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,7 +8,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid name" }, { status: 400 });
     }
 
-    const { options } = await generateRegisterOptions(name.trim());
+    const origin = getOriginFromRequest(req);
+    const { options } = await generateRegisterOptions(origin, name.trim());
     return NextResponse.json(options);
   } catch (err) {
     return NextResponse.json({ error: "Internal error" }, { status: 500 });

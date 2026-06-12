@@ -45,9 +45,6 @@ turso db tokens create wx-bot  # 保存为 TURSO_AUTH_TOKEN
 |---|---|
 | `TURSO_DATABASE_URL` | Turso 数据库连接串，如 `libsql://wx-bot-xxx.turso.io` |
 | `TURSO_AUTH_TOKEN` | Turso 认证 token |
-| `RP_ID` | 域名（如 `wx-bot.vercel.app`） |
-| `RP_NAME` | 应用名，如 `wx-bot` |
-| `ORIGIN` | 完整 origin，如 `https://wx-bot.vercel.app` |
 | `SESSION_SECRET` | 32+ 字符随机字符串，用于加密 session cookie |
 | `DEPLOY_HOOK_URL` | Deploy Hook URL（见步骤 3） |
 
