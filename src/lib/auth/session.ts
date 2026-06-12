@@ -1,6 +1,5 @@
 import { getIronSession } from "iron-session";
 import { cookies } from "next/headers";
-import { createHash } from "node:crypto";
 
 export interface SessionData {
   userId?: string;
@@ -9,17 +8,8 @@ export interface SessionData {
   userName?: string;
 }
 
-function getSessionPassword() {
-  const pw = process.env.SESSION_SECRET;
-  if (pw) return pw;
-  // Auto-generate from VERCEL_URL so sessions persist across requests
-  // but invalidate on redeploy (acceptable for personal projects)
-  const base = process.env.VERCEL_URL || "localhost";
-  return createHash("sha256").update(`wx-bot:${base}`).digest("hex").slice(0, 32);
-}
-
 export const sessionOptions = {
-  password: getSessionPassword(),
+  password: process.env.SESSION_SECRET || process.env.VERCEL_DEPLOYMENT_ID || "wx-bot-local-dev-secret-fallback-32c",
   cookieName: "wx-bot-session",
   cookieOptions: {
     secure: process.env.NODE_ENV === "production",
