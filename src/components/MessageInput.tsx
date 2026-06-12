@@ -12,14 +12,8 @@ export default function MessageInput({
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploadedMedia, setUploadedMedia] = useState<{
-    mediaRef: {
-      encrypt_query_param?: string;
-      aes_key?: string;
-      encrypt_type?: number;
-    };
-    mediaType: number;
-  } | null>(null);
+  const [preview, setPreview] = useState<{ url: string; name: string; type: string } | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleSendText() {
@@ -40,59 +34,93 @@ export default function MessageInput({
     }
   }
 
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
+    setPendingFile(file);
+    const url = URL.createObjectURL(file);
+    setPreview({ url, name: file.name, type: file.type });
 
-      const resp = await fetch(`/api/bots/${botId}/media/upload`, {
+    // Reset input so same file can be re-selected
+    e.target.value = "";
+  }
+
+  async function handleUploadAndSend() {
+    if (!pendingFile || sending) return;
+    setSending(true);
+    setUploading(true);
+
+    try {
+      // Upload
+      const formData = new FormData();
+      formData.append("file", pendingFile);
+      const uploadResp = await fetch(`/api/bots/${botId}/media/upload`, {
         method: "POST",
         body: formData,
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error);
+      const uploadData = await uploadResp.json();
+      if (!uploadResp.ok) throw new Error(uploadData.error);
 
       let mediaType = 4;
-      if (file.type.startsWith("image/")) mediaType = 2;
-      else if (file.type.startsWith("video/")) mediaType = 5;
-      else if (file.type.startsWith("audio/")) mediaType = 3;
+      if (pendingFile.type.startsWith("image/")) mediaType = 2;
+      else if (pendingFile.type.startsWith("video/")) mediaType = 5;
+      else if (pendingFile.type.startsWith("audio/")) mediaType = 3;
 
-      setUploadedMedia({ mediaRef: data.mediaRef, mediaType });
-    } catch (err) {
-      console.error("Upload failed:", err);
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  async function handleSendMedia() {
-    if (!uploadedMedia) return;
-
-    setSending(true);
-    try {
+      // Send
       await fetch(`/api/bots/${botId}/media/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          mediaRef: uploadedMedia.mediaRef,
-          mediaType: uploadedMedia.mediaType,
+          mediaRef: uploadData.mediaRef,
+          mediaType,
         }),
       });
-      setUploadedMedia(null);
+
+      clearPreview();
       onSend();
     } catch (err) {
-      console.error("Send media failed:", err);
+      console.error("Upload/send failed:", err);
     } finally {
       setSending(false);
+      setUploading(false);
     }
+  }
+
+  function clearPreview() {
+    if (preview?.url) URL.revokeObjectURL(preview.url);
+    setPreview(null);
+    setPendingFile(null);
   }
 
   return (
     <div className="border-t bg-white p-3 space-y-2">
+      {preview && (
+        <div className="flex items-center gap-3 rounded-lg border p-2">
+          {preview.type.startsWith("image/") && (
+            <img src={preview.url} alt="" className="h-16 w-16 rounded object-cover" />
+          )}
+          {preview.type.startsWith("video/") && (
+            <video src={preview.url} className="h-16 w-16 rounded object-cover" />
+          )}
+          <span className="flex-1 truncate text-sm text-gray-600">{preview.name}</span>
+          <button
+            onClick={handleUploadAndSend}
+            disabled={sending}
+            className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {uploading ? "上传中..." : "发送"}
+          </button>
+          <button
+            onClick={clearPreview}
+            disabled={sending}
+            className="text-xs text-gray-400 hover:text-red-500"
+          >
+            取消
+          </button>
+        </div>
+      )}
+
       <div className="flex gap-2">
         <input
           type="text"
@@ -111,36 +139,20 @@ export default function MessageInput({
         </button>
         <button
           onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
+          disabled={sending}
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50"
         >
-          {uploading ? "上传中..." : "📎"}
+          {uploading ? "⏳" : "📎"}
         </button>
         <input
           ref={fileInputRef}
           type="file"
-          onChange={handleFileUpload}
+          accept="image/*,video/*"
+          capture="environment"
+          onChange={handleFileSelect}
           className="hidden"
         />
       </div>
-      {uploadedMedia && (
-        <div className="flex items-center gap-2 rounded-lg bg-green-50 p-2 text-sm text-green-700">
-          <span>媒体已就绪</span>
-          <button
-            onClick={handleSendMedia}
-            disabled={sending}
-            className="rounded bg-green-600 px-2 py-0.5 text-xs text-white hover:bg-green-700 disabled:opacity-50"
-          >
-            发送媒体
-          </button>
-          <button
-            onClick={() => setUploadedMedia(null)}
-            className="text-xs text-gray-400 hover:text-red-500"
-          >
-            取消
-          </button>
-        </div>
-      )}
     </div>
   );
 }
