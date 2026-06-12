@@ -14,17 +14,18 @@ export async function POST(
     const ownership = await requireBotOwner(botId, auth.userId);
     if ("error" in ownership) return ownership.error;
 
-    const { toUserId, text, contextToken } = (await req.json()) as {
-      toUserId: string;
+    const toUserId = ownership.bot.ownerWxUserId;
+    if (!toUserId) {
+      return NextResponse.json({ error: "Bot not linked to a WeChat user" }, { status: 400 });
+    }
+
+    const { text, contextToken } = (await req.json()) as {
       text: string;
       contextToken?: string;
     };
 
-    if (!toUserId || !text) {
-      return NextResponse.json(
-        { error: "Missing toUserId or text" },
-        { status: 400 }
-      );
+    if (!text) {
+      return NextResponse.json({ error: "Missing text" }, { status: 400 });
     }
 
     if (text.length > 4096) {

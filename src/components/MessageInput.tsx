@@ -10,7 +10,6 @@ export default function MessageInput({
   onSend: () => void;
 }) {
   const [text, setText] = useState("");
-  const [toUserId, setToUserId] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadedMedia, setUploadedMedia] = useState<{
@@ -24,13 +23,13 @@ export default function MessageInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleSendText() {
-    if (!text.trim() || !toUserId.trim() || sending) return;
+    if (!text.trim() || sending) return;
     setSending(true);
     try {
       await fetch(`/api/bots/${botId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ toUserId, text }),
+        body: JSON.stringify({ text }),
       });
       setText("");
       onSend();
@@ -43,13 +42,12 @@ export default function MessageInput({
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !toUserId.trim()) return;
+    if (!file) return;
 
     setUploading(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("toUserId", toUserId);
 
       const resp = await fetch(`/api/bots/${botId}/media/upload`, {
         method: "POST",
@@ -72,7 +70,7 @@ export default function MessageInput({
   }
 
   async function handleSendMedia() {
-    if (!uploadedMedia || !toUserId.trim()) return;
+    if (!uploadedMedia) return;
 
     setSending(true);
     try {
@@ -80,7 +78,6 @@ export default function MessageInput({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          toUserId,
           mediaRef: uploadedMedia.mediaRef,
           mediaType: uploadedMedia.mediaType,
         }),
@@ -96,13 +93,6 @@ export default function MessageInput({
 
   return (
     <div className="border-t bg-white p-3 space-y-2">
-      <input
-        type="text"
-        placeholder="目标用户 ID (to_user_id)"
-        value={toUserId}
-        onChange={(e) => setToUserId(e.target.value)}
-        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-none"
-      />
       <div className="flex gap-2">
         <input
           type="text"
@@ -114,14 +104,14 @@ export default function MessageInput({
         />
         <button
           onClick={handleSendText}
-          disabled={sending || !text.trim() || !toUserId.trim()}
+          disabled={sending || !text.trim()}
           className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
         >
           发送
         </button>
         <button
           onClick={() => fileInputRef.current?.click()}
-          disabled={uploading || !toUserId.trim()}
+          disabled={uploading}
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50"
         >
           {uploading ? "上传中..." : "📎"}

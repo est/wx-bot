@@ -19,8 +19,8 @@ export async function GET(
     const bot = ownership.bot;
     return NextResponse.json({
       id: bot.id,
-      name: bot.name,
       accountId: bot.accountId,
+      ownerWxUserId: bot.ownerWxUserId,
       status: bot.status,
       baseUrl: bot.baseUrl,
       createdAt: bot.createdAt,

@@ -6,6 +6,14 @@ import ChatView from "@/components/ChatView";
 import MessageInput from "@/components/MessageInput";
 import type { WeixinMessage } from "@/lib/weixin/types";
 
+interface BotInfo {
+  id: string;
+  name: string;
+  accountId?: string;
+  ownerWxUserId?: string;
+  status: string;
+}
+
 export default function BotChatPage({
   params,
 }: {
@@ -13,8 +21,7 @@ export default function BotChatPage({
 }) {
   const { botId } = use(params);
   const [messages, setMessages] = useState<WeixinMessage[]>([]);
-  const [botName, setBotName] = useState("");
-  const [botStatus, setBotStatus] = useState("");
+  const [bot, setBot] = useState<BotInfo | null>(null);
   const esRef = useRef<EventSource | null>(null);
   const router = useRouter();
 
@@ -32,10 +39,7 @@ export default function BotChatPage({
         return res.json();
       })
       .then((data) => {
-        if (data) {
-          setBotName(data.name);
-          setBotStatus(data.status);
-        }
+        if (data) setBot(data);
       });
   }, [botId, router]);
 
@@ -69,9 +73,13 @@ export default function BotChatPage({
     <div className="flex h-[calc(100vh-5rem)] flex-col">
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div>
-          <h2 className="font-semibold text-gray-900">{botName || "Bot"}</h2>
+          <h2 className="font-semibold text-gray-900">
+            {bot?.accountId || botId}
+          </h2>
           <p className="text-xs text-gray-400">
-            {botStatus === "active" ? "在线" : botStatus}
+            {bot?.ownerWxUserId && `微信用户: ${bot.ownerWxUserId}`}
+            {bot?.status === "active" && bot?.ownerWxUserId && " · "}
+            {bot?.status === "active" ? "在线" : bot?.status}
           </p>
         </div>
         <button

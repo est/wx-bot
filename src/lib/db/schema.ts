@@ -32,6 +32,7 @@ export const bots = sqliteTable("bots", {
     .references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull().default("未命名"),
   accountId: text("account_id"),
+  ownerWxUserId: text("owner_wx_user_id"),
   token: text("token"),
   baseUrl: text("base_url").default("https://ilinkai.weixin.qq.com"),
   cdnBaseUrl: text("cdn_base_url").default(

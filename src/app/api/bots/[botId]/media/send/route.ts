@@ -17,8 +17,12 @@ export async function POST(
     const ownership = await requireBotOwner(botId, auth.userId);
     if ("error" in ownership) return ownership.error;
 
-    const { toUserId, mediaRef, mediaType, contextToken } = (await req.json()) as {
-      toUserId: string;
+    const toUserId = ownership.bot.ownerWxUserId;
+    if (!toUserId) {
+      return NextResponse.json({ error: "Bot not linked to a WeChat user" }, { status: 400 });
+    }
+
+    const { mediaRef, mediaType, contextToken } = (await req.json()) as {
       mediaRef: {
         encrypt_query_param?: string;
         aes_key?: string;
@@ -29,18 +33,12 @@ export async function POST(
       contextToken?: string;
     };
 
-    if (!toUserId || !mediaRef || !mediaType) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
+    if (!mediaRef || !mediaType) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     if (!VALID_MEDIA_TYPES.includes(mediaType)) {
-      return NextResponse.json(
-        { error: "Invalid mediaType" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid mediaType" }, { status: 400 });
     }
 
     const item: MessageItem = { type: mediaType };

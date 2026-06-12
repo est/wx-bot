@@ -30,6 +30,7 @@ export async function GET(
         .set({
           token: result.token,
           accountId: result.accountId,
+          ownerWxUserId: result.userId,
           baseUrl: result.baseUrl,
           status: "active",
           updatedAt: new Date(),

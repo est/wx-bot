@@ -19,8 +19,8 @@ export async function GET() {
     return NextResponse.json(
       botList.map((b) => ({
         id: b.id,
-        name: b.name,
         accountId: b.accountId,
+        ownerWxUserId: b.ownerWxUserId,
         status: b.status,
         createdAt: b.createdAt,
         updatedAt: b.updatedAt,
@@ -31,13 +31,10 @@ export async function GET() {
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function POST() {
   try {
     const auth = await requireSession();
     if ("error" in auth) return auth.error;
-
-    const { name } = (await req.json()) as { name?: string };
-    const botName = name && name.length <= 64 ? name : "未命名";
 
     const botId = randomUUID();
     const { sessionId, qrcodeUrl } = await startQrLogin();
@@ -45,7 +42,6 @@ export async function POST(req: NextRequest) {
     await db.insert(bots).values({
       id: botId,
       userId: auth.userId,
-      name: botName,
       status: "pending",
     });
 

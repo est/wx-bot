@@ -9,8 +9,7 @@ export default function QrLogin() {
   const [sessionId, setSessionId] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
-  const [name, setName] = useState("");
-  const [step, setStep] = useState<"name" | "qr" | "done">("name");
+  const [step, setStep] = useState<"start" | "qr" | "done">("start");
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const router = useRouter();
 
@@ -20,7 +19,7 @@ export default function QrLogin() {
       const resp = await fetch("/api/bots", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name || undefined }),
+        body: JSON.stringify({}),
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error);
@@ -76,20 +75,8 @@ export default function QrLogin() {
         </div>
       )}
 
-      {step === "name" && (
+      {step === "start" && (
         <div className="mt-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Bot 名称
-            </label>
-            <input
-              type="text"
-              placeholder="我的微信 Bot"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
-            />
-          </div>
           <button
             onClick={startLogin}
             className="w-full rounded-lg bg-blue-600 px-4 py-3 text-white font-medium hover:bg-blue-700"
@@ -109,10 +96,10 @@ export default function QrLogin() {
         <div className="mt-6 space-y-4 text-center">
           <p className="text-sm text-gray-600">{status}</p>
           {qrcodeUrl && (
-            <img
+            <iframe
               src={qrcodeUrl}
-              alt="QR Code"
-              className="mx-auto h-64 w-64 rounded-lg border"
+              className="mx-auto h-80 w-80 rounded-lg border"
+              sandbox="allow-scripts allow-same-origin"
             />
           )}
           <p className="text-xs text-gray-400">
@@ -120,7 +107,7 @@ export default function QrLogin() {
           </p>
           <button
             onClick={() => {
-              setStep("name");
+              setStep("start");
               setError("");
               if (pollingRef.current) clearInterval(pollingRef.current);
             }}

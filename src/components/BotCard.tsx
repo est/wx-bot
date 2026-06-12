@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 
 interface Bot {
   id: string;
-  name: string;
   accountId?: string;
+  ownerWxUserId?: string;
   status: string;
   createdAt: Date;
   updatedAt: Date;
@@ -34,7 +34,9 @@ export default function BotCard({ bot }: { bot: Bot }) {
       className="cursor-pointer rounded-xl border bg-white p-5 shadow-sm transition hover:shadow-md"
     >
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">{bot.name}</h3>
+        <h3 className="text-lg font-semibold text-gray-900">
+          {bot.accountId || bot.id}
+        </h3>
         <span
           className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColors[bot.status] || "bg-gray-100 text-gray-600"}`}
         >
@@ -42,9 +44,7 @@ export default function BotCard({ bot }: { bot: Bot }) {
         </span>
       </div>
       <div className="mt-2 text-sm text-gray-500">
-        {bot.accountId && (
-          <p>ID: {bot.accountId}</p>
-        )}
+        {bot.ownerWxUserId && <p>微信用户: {bot.ownerWxUserId}</p>}
         <p className="mt-1">
           创建于 {new Date(bot.createdAt).toLocaleDateString("zh-CN")}
         </p>

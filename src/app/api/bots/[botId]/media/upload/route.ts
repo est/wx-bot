@@ -16,22 +16,20 @@ export async function POST(
     const ownership = await requireBotOwner(botId, auth.userId);
     if ("error" in ownership) return ownership.error;
 
+    const toUserId = ownership.bot.ownerWxUserId;
+    if (!toUserId) {
+      return NextResponse.json({ error: "Bot not linked to a WeChat user" }, { status: 400 });
+    }
+
     const formData = await req.formData();
     const file = formData.get("file") as File;
-    const toUserId = formData.get("toUserId") as string;
 
-    if (!file || !toUserId) {
-      return NextResponse.json(
-        { error: "Missing file or toUserId" },
-        { status: 400 }
-      );
+    if (!file) {
+      return NextResponse.json({ error: "Missing file" }, { status: 400 });
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: "File too large (max 50MB)" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "File too large (max 50MB)" }, { status: 400 });
     }
 
     const allowedTypes = [
@@ -43,10 +41,7 @@ export async function POST(
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ];
     if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json(
-        { error: "Unsupported file type" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Unsupported file type" }, { status: 400 });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
