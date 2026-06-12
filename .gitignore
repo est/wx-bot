@@ -41,6 +41,18 @@ build/Release
 node_modules/
 jspm_packages/
 
+# Lockfile (auto-generated, fresh install on each deploy)
+package-lock.json
+
+# Package reference (not tracked)
+.ref/
+
+# Drizzle migrations (generated)
+drizzle/
+
+# MiMo Code plans
+.mimocode/
+
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
 
