@@ -69,34 +69,6 @@ export default function PasskeyLogin() {
     }
   }
 
-  async function handleAutofillLogin() {
-    setStatus("正在检测通行密钥...");
-    setError("");
-    try {
-      const optionsResp = await fetch("/api/auth/login/options");
-      const optionsJSON = await optionsResp.json();
-      if (!optionsResp.ok) throw new Error(optionsJSON.error);
-
-      const authResp = await startAuthentication({
-        optionsJSON,
-        useBrowserAutofill: true,
-      });
-
-      const verifyResp = await fetch("/api/auth/login/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(authResp),
-      });
-      const verifyJSON = await verifyResp.json();
-      if (!verifyResp.ok) throw new Error(verifyJSON.error);
-
-      window.location.href = "/dashboard";
-    } catch (err) {
-      setError(String(err));
-      setStatus("");
-    }
-  }
-
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
       <div className="w-full max-w-sm space-y-6 rounded-xl bg-white p-8 shadow-lg">
@@ -125,13 +97,6 @@ export default function PasskeyLogin() {
               className="w-full rounded-lg bg-blue-600 px-4 py-3 text-white font-medium hover:bg-blue-700 disabled:opacity-50"
             >
               使用通行密钥登录
-            </button>
-            <button
-              onClick={handleAutofillLogin}
-              disabled={!!status}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              自动填充登录
             </button>
             <p className="text-center text-sm text-gray-500">
               还没有账号？{" "}
