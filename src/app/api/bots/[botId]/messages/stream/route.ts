@@ -10,6 +10,29 @@ async function touchBot(botId: string) {
   await db.update(bots).set({ updatedAt: new Date() }).where(eq(bots.id, botId));
 }
 
+let lastChainTrigger = 0;
+const CHAIN_COOLDOWN_MS = 120_000; // 2 min
+
+async function ensureQstashChain() {
+  if (!process.env.QSTASH_TOKEN) return;
+  const now = Date.now();
+  if (now - lastChainTrigger < CHAIN_COOLDOWN_MS) return;
+  lastChainTrigger = now;
+
+  const baseUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://localhost:3000";
+
+  fetch("https://qstash.upstash.io/v2/publish", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.QSTASH_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ url: `${baseUrl}/api/cron/poll`, body: "{}" }),
+  }).catch(() => {});
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ botId: string }> }
@@ -23,6 +46,8 @@ export async function GET(
 
   // Mark bot as actively connected
   await touchBot(botId);
+  // Kick off background collection chain if not already running
+  ensureQstashChain();
 
   const encoder = new TextEncoder();
   let closed = false;
