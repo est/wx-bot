@@ -1,12 +1,7 @@
 import crypto from "node:crypto";
 import { getMediaUploadUrl } from "./adapter";
 import { UploadMediaType } from "./client";
-
-function aesEncrypt(data: Buffer, key: Buffer): Buffer {
-  const cipher = crypto.createCipheriv("aes-128-ecb", key, null);
-  cipher.setAutoPadding(true);
-  return Buffer.concat([cipher.update(data), cipher.final()]);
-}
+import { encryptAesEcb } from "./cdn";
 
 export async function uploadMedia(
   botId: string,
@@ -20,9 +15,9 @@ export async function uploadMedia(
     .update(fileBuffer)
     .digest("hex");
   const aeskey = crypto.randomBytes(16);
-  const encrypted = aesEncrypt(fileBuffer, aeskey);
+  const encrypted = encryptAesEcb(fileBuffer, aeskey);
   const filesize = encrypted.length;
-  const aeskeyB64 = aeskey.toString("base64");
+  const aeskeyHex = aeskey.toString("hex");
 
   let mediaType: number = UploadMediaType.FILE;
   if (mimeType.startsWith("image/")) mediaType = UploadMediaType.IMAGE;
@@ -35,20 +30,31 @@ export async function uploadMedia(
     rawsize,
     rawfilemd5,
     filesize,
-    aeskey: aeskeyB64,
+    aeskey: aeskeyHex,
   });
 
   if (uploadResp.upload_full_url && uploadResp.upload_param) {
-    await fetch(uploadResp.upload_full_url, {
-      method: "PUT",
-      headers: { "Content-Type": "application/octet-stream" },
-      body: new Uint8Array(encrypted),
-    });
+    let lastErr: unknown;
+    for (let i = 0; i < 3; i++) {
+      try {
+        const res = await fetch(uploadResp.upload_full_url, {
+          method: "PUT",
+          headers: { "Content-Type": "application/octet-stream" },
+          body: new Uint8Array(encrypted),
+        });
+        if (res.ok) break;
+        lastErr = new Error(`Upload failed: ${res.status}`);
+      } catch (err) {
+        lastErr = err;
+      }
+      if (i < 2) await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
+    }
+    if (lastErr) throw lastErr;
   }
 
   return {
     encrypt_query_param: uploadResp.upload_param,
-    aes_key: aeskeyB64,
+    aes_key: aeskeyHex,
     encrypt_type: 0,
   };
 }
