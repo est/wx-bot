@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { encodePcmToSilk } from "./silk";
 
 export default function MessageInput({
   botId,
@@ -11,10 +12,12 @@ export default function MessageInput({
 }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<{ url: string; name: string; type: string } | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [recording, setRecording] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   async function handleSendText() {
     if (!text.trim() || sending) return;
@@ -37,22 +40,16 @@ export default function MessageInput({
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setPendingFile(file);
     const url = URL.createObjectURL(file);
     setPreview({ url, name: file.name, type: file.type });
-
-    // Reset input so same file can be re-selected
     e.target.value = "";
   }
 
   async function handleUploadAndSend() {
     if (!pendingFile || sending) return;
     setSending(true);
-    setUploading(true);
-
     try {
-      // Upload
       const formData = new FormData();
       formData.append("file", pendingFile);
       const uploadResp = await fetch(`/api/bots/${botId}/media/upload`, {
@@ -65,16 +62,11 @@ export default function MessageInput({
       let mediaType = 4;
       if (pendingFile.type.startsWith("image/")) mediaType = 2;
       else if (pendingFile.type.startsWith("video/")) mediaType = 5;
-      else if (pendingFile.type.startsWith("audio/")) mediaType = 3;
 
-      // Send
       await fetch(`/api/bots/${botId}/media/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mediaRef: uploadData.mediaRef,
-          mediaType,
-        }),
+        body: JSON.stringify({ mediaRef: uploadData.mediaRef, mediaType }),
       });
 
       clearPreview();
@@ -83,7 +75,6 @@ export default function MessageInput({
       console.error("Upload/send failed:", err);
     } finally {
       setSending(false);
-      setUploading(false);
     }
   }
 
@@ -91,6 +82,72 @@ export default function MessageInput({
     if (preview?.url) URL.revokeObjectURL(preview.url);
     setPreview(null);
     setPendingFile(null);
+  }
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const arrayBuffer = await blob.arrayBuffer();
+
+        // Decode to raw PCM via AudioContext
+        const audioCtx = new AudioContext({ sampleRate: 24000 });
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        const pcmFloat = audioBuffer.getChannelData(0);
+        const pcmInt16 = new Int16Array(pcmFloat.length);
+        for (let i = 0; i < pcmFloat.length; i++) {
+          const s = Math.max(-1, Math.min(1, pcmFloat[i]));
+          pcmInt16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+        }
+
+        // Encode to SILK
+        const silkData = await encodePcmToSilk(pcmInt16.buffer, 24000);
+
+        // Upload and send
+        setSending(true);
+        try {
+          const formData = new FormData();
+          formData.append("file", new Blob([new Uint8Array(silkData)], { type: "audio/silk" }), "voice.silk");
+          const uploadResp = await fetch(`/api/bots/${botId}/media/upload`, {
+            method: "POST",
+            body: formData,
+          });
+          const uploadData = await uploadResp.json();
+          if (!uploadResp.ok) throw new Error(uploadData.error);
+
+          await fetch(`/api/bots/${botId}/media/send`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mediaRef: uploadData.mediaRef, mediaType: 3 }),
+          });
+          onSend();
+        } catch (err) {
+          console.error("Voice send failed:", err);
+        } finally {
+          setSending(false);
+        }
+      };
+
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setRecording(true);
+    } catch (err) {
+      console.error("Microphone access denied:", err);
+    }
+  }
+
+  function stopRecording() {
+    mediaRecorderRef.current?.stop();
+    setRecording(false);
   }
 
   return (
@@ -109,7 +166,7 @@ export default function MessageInput({
             disabled={sending}
             className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            {uploading ? "上传中..." : "发送"}
+            {sending ? "发送中..." : "发送"}
           </button>
           <button
             onClick={clearPreview}
@@ -138,11 +195,22 @@ export default function MessageInput({
           发送
         </button>
         <button
+          onClick={recording ? stopRecording : startRecording}
+          disabled={sending}
+          className={`rounded-lg px-3 py-2 text-sm disabled:opacity-50 ${
+            recording
+              ? "bg-red-500 text-white animate-pulse"
+              : "border border-gray-300 text-gray-600 hover:bg-gray-50"
+          }`}
+        >
+          {recording ? "⏹" : "🎤"}
+        </button>
+        <button
           onClick={() => fileInputRef.current?.click()}
           disabled={sending}
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50"
         >
-          {uploading ? "⏳" : "📎"}
+          📎
         </button>
         <input
           ref={fileInputRef}

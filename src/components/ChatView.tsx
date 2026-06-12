@@ -1,6 +1,7 @@
 "use client";
 
 import type { WeixinMessage, MessageItem, CDNMedia } from "@/lib/weixin/types";
+import VoiceMessage from "./VoiceMessage";
 
 function cdnUrl(botId: string, cdn: CDNMedia | undefined, mime: string): string | null {
   if (!cdn) return null;
@@ -36,9 +37,9 @@ function renderItem(botId: string, item: MessageItem, index: number) {
   // Voice
   if (item.type === 3) {
     const cdn = item.voice_item?.cdn_media || item.voice_item?.media;
-    const url = cdnUrl(botId, cdn, "audio/wav");
+    const url = cdnUrl(botId, cdn, "audio/silk");
     if (url) {
-      return <audio key={index} controls src={url} className="max-w-full" />;
+      return <VoiceMessage key={index} src={url} className="max-w-full" />;
     }
     return <p key={index} className="text-sm text-gray-400">[语音]</p>;
   }
