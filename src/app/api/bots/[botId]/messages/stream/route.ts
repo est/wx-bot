@@ -1,7 +1,14 @@
 import { NextRequest } from "next/server";
 import { requireSession, requireBotOwner } from "@/lib/auth/guard";
 import { pollUpdates } from "@/lib/weixin/stream";
+import { db } from "@/lib/db";
+import { bots } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import type { WeixinMessage } from "@/lib/weixin/client";
+
+async function touchBot(botId: string) {
+  await db.update(bots).set({ updatedAt: new Date() }).where(eq(bots.id, botId));
+}
 
 export async function GET(
   req: NextRequest,
@@ -14,6 +21,9 @@ export async function GET(
   const ownership = await requireBotOwner(botId, auth.userId);
   if ("error" in ownership) return ownership.error;
 
+  // Mark bot as actively connected
+  await touchBot(botId);
+
   const encoder = new TextEncoder();
   let closed = false;
   let pollSignal: AbortController | null = null;
@@ -23,9 +33,11 @@ export async function GET(
       const abortController = new AbortController();
       pollSignal = abortController;
 
-      const heartbeat = setInterval(() => {
+      const heartbeat = setInterval(async () => {
         if (closed) return;
         controller.enqueue(encoder.encode(": heartbeat\n\n"));
+        // Update updatedAt so QStash knows this bot has an active browser connection
+        try { await touchBot(botId); } catch {}
       }, 8000);
 
       req.signal.addEventListener("abort", () => {

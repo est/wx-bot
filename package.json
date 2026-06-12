@@ -18,6 +18,7 @@
     "@simplewebauthn/browser": "^13.1.0",
     "@simplewebauthn/server": "^13.1.0",
     "@tencent-weixin/openclaw-weixin": "^2.0.0",
+    "@upstash/qstash": "^2.11.0",
     "drizzle-orm": "^0.41.0",
     "iron-session": "^8.0.4",
     "next": "^16.0.0",

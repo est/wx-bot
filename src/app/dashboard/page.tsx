@@ -49,12 +49,24 @@ export default function DashboardPage() {
     <div>
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-gray-900">我的 Bot</h2>
-        <button
-          onClick={() => router.push("/dashboard/bots/new")}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              const res = await fetch("/api/cron/poll/start", { method: "POST" });
+              const data = await res.json();
+              alert(data.ok ? "后台收集已启动" : `启动失败: ${data.reason || data.error}`);
+            }}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            启动后台收集
+          </button>
+          <button
+            onClick={() => router.push("/dashboard/bots/new")}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
           添加 Bot
-        </button>
+          </button>
+        </div>
       </div>
 
       {loading && (
