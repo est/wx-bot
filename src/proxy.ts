@@ -2,24 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getIronSession } from "iron-session";
 import type { SessionData } from "@/lib/auth/session";
-
-function getSessionPassword() {
-  const pw = process.env.SESSION_SECRET;
-  if (!pw) {
-    throw new Error("SESSION_SECRET environment variable is required");
-  }
-  return pw;
-}
-
-const sessionOptions = {
-  password: getSessionPassword(),
-  cookieName: "wx-bot-session",
-  cookieOptions: {
-    secure: process.env.NODE_ENV === "production",
-    httpOnly: true,
-    sameSite: "lax" as const,
-  },
-};
+import { sessionOptions } from "@/lib/auth/session";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

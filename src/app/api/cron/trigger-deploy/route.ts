@@ -4,10 +4,7 @@ export async function GET() {
   const hookUrl = process.env.DEPLOY_HOOK_URL;
 
   if (!hookUrl) {
-    return NextResponse.json(
-      { triggered: false, error: "DEPLOY_HOOK_URL not configured" },
-      { status: 500 }
-    );
+    return NextResponse.json({ triggered: false, reason: "DEPLOY_HOOK_URL not set" });
   }
 
   try {
