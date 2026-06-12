@@ -8,7 +8,6 @@ import type { WeixinMessage } from "@/lib/weixin/types";
 
 interface BotInfo {
   id: string;
-  name: string;
   accountId?: string;
   ownerWxUserId?: string;
   status: string;
@@ -22,12 +21,13 @@ export default function BotChatPage({
   const { botId } = use(params);
   const [messages, setMessages] = useState<WeixinMessage[]>([]);
   const [bot, setBot] = useState<BotInfo | null>(null);
+  const [error, setError] = useState("");
   const esRef = useRef<EventSource | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     fetch(`/api/bots/${botId}`)
-      .then((res) => {
+      .then(async (res) => {
         if (res.status === 401) {
           router.push("/login");
           return null;
@@ -36,11 +36,17 @@ export default function BotChatPage({
           router.push("/dashboard");
           return null;
         }
-        return res.json();
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || `加载失败 (${res.status})`);
+          return null;
+        }
+        return data;
       })
       .then((data) => {
         if (data) setBot(data);
-      });
+      })
+      .catch((err) => setError(`网络错误: ${String(err)}`));
   }, [botId, router]);
 
   useEffect(() => {
@@ -65,8 +71,22 @@ export default function BotChatPage({
     };
   }, [botId]);
 
-  function handleSend() {
-    // SSE will pick up sent messages when they arrive back
+  function handleSend() {}
+
+  if (error) {
+    return (
+      <div className="flex h-[calc(100vh-5rem)] items-center justify-center">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+          <p className="text-sm text-red-600">{error}</p>
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="mt-3 text-sm text-red-700 underline"
+          >
+            返回列表
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

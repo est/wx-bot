@@ -27,7 +27,11 @@ export async function GET() {
       }))
     );
   } catch (err) {
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    console.error("[GET /api/bots]", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : String(err) },
+      { status: 500 }
+    );
   }
 }
 
@@ -47,6 +51,10 @@ export async function POST() {
 
     return NextResponse.json({ botId, sessionId, qrcodeUrl });
   } catch (err) {
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    console.error("[POST /api/bots]", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : String(err) },
+      { status: 500 }
+    );
   }
 }

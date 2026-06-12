@@ -6,8 +6,8 @@ import BotCard from "@/components/BotCard";
 
 interface Bot {
   id: string;
-  name: string;
   accountId?: string;
+  ownerWxUserId?: string;
   status: string;
   createdAt: Date;
   updatedAt: Date;
@@ -16,22 +16,34 @@ interface Bot {
 export default function DashboardPage() {
   const [bots, setBots] = useState<Bot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const router = useRouter();
 
+  async function loadBots() {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/bots");
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || `请求失败 (${res.status})`);
+        return;
+      }
+      setBots(data);
+    } catch (err) {
+      setError(`网络错误: ${String(err)}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    fetch("/api/bots")
-      .then((res) => {
-        if (res.status === 401) {
-          router.push("/login");
-          return null;
-        }
-        return res.json();
-      })
-      .then((data) => {
-        if (data) setBots(data);
-      })
-      .finally(() => setLoading(false));
-  }, [router]);
+    loadBots();
+  }, []);
 
   return (
     <div>
@@ -45,9 +57,23 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {loading ? (
-        <p className="mt-8 text-center text-gray-500">加载中...</p>
-      ) : bots.length === 0 ? (
+      {loading && (
+        <p className="mt-8 text-center text-gray-400">加载中...</p>
+      )}
+
+      {error && (
+        <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4">
+          <p className="text-sm text-red-600">{error}</p>
+          <button
+            onClick={loadBots}
+            className="mt-2 text-sm text-red-700 underline hover:no-underline"
+          >
+            重试
+          </button>
+        </div>
+      )}
+
+      {!loading && !error && bots.length === 0 && (
         <div className="mt-16 text-center">
           <p className="text-gray-400">还没有 Bot</p>
           <button
@@ -57,7 +83,9 @@ export default function DashboardPage() {
             添加第一个 Bot
           </button>
         </div>
-      ) : (
+      )}
+
+      {!loading && !error && bots.length > 0 && (
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           {bots.map((bot) => (
             <BotCard key={bot.id} bot={bot} />
