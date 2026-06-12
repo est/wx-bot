@@ -88,5 +88,5 @@ src/
 │   ├── auth/               # session + WebAuthn + 路由守卫
 │   └── weixin/             # 微信集成层 (适配器, QR登录, SSE流, 媒体上传)
 ├── components/             # UI 组件
-└── middleware.ts           # 路由保护 (cookie 验证)
+└── proxy.ts               # 路由保护 (cookie 验证)
 ```
