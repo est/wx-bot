@@ -10,14 +10,8 @@ async function touchBot(botId: string) {
   await db.update(bots).set({ updatedAt: new Date() }).where(eq(bots.id, botId));
 }
 
-let lastChainTrigger = 0;
-const CHAIN_COOLDOWN_MS = 120_000; // 2 min
-
 async function ensureQstashChain() {
   if (!process.env.QSTASH_TOKEN) return;
-  const now = Date.now();
-  if (now - lastChainTrigger < CHAIN_COOLDOWN_MS) return;
-  lastChainTrigger = now;
 
   const baseUrl = process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
@@ -28,6 +22,8 @@ async function ensureQstashChain() {
     headers: {
       Authorization: `Bearer ${process.env.QSTASH_TOKEN}`,
       "Content-Type": "application/json",
+      "Upstash-Deduplication-Id": "poll-chain",
+      "Upstash-Deduplication-Window": "120",
     },
     body: JSON.stringify({ url: `${baseUrl}/api/cron/poll`, body: "{}" }),
   }).catch(() => {});

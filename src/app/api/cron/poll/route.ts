@@ -21,12 +21,16 @@ async function scheduleNext() {
     ? `https://${process.env.VERCEL_URL}`
     : "http://localhost:3000";
 
+  const delaySec = Math.floor(POLL_INTERVAL_MS / 1000);
+
   await fetch("https://qstash.upstash.io/v2/publish", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
-      "Upstash-Delay": `${Math.floor(POLL_INTERVAL_MS / 1000)}s`,
+      "Upstash-Delay": `${delaySec}s`,
+      "Upstash-Deduplication-Id": `poll-next-${Math.floor(Date.now() / POLL_INTERVAL_MS)}`,
+      "Upstash-Deduplication-Window": `${delaySec}`,
     },
     body: JSON.stringify({
       url: `${baseUrl}/api/cron/poll`,
