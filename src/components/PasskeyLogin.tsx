@@ -13,10 +13,15 @@ export default function PasskeyLogin() {
   const [error, setError] = useState("");
 
   async function handleRegister() {
+    if (!name.trim()) return;
     setStatus("正在创建通行密钥...");
     setError("");
     try {
-      const optionsResp = await fetch("/api/auth/register/options");
+      const optionsResp = await fetch("/api/auth/register/options", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim() }),
+      });
       const optionsJSON = await optionsResp.json();
       if (!optionsResp.ok) throw new Error(optionsJSON.error);
 
@@ -145,11 +150,12 @@ export default function PasskeyLogin() {
               placeholder="你的名字"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              maxLength={128}
               className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
             />
             <button
               onClick={handleRegister}
-              disabled={!name || !!status}
+              disabled={!name.trim() || !!status}
               className="w-full rounded-lg bg-blue-600 px-4 py-3 text-white font-medium hover:bg-blue-700 disabled:opacity-50"
             >
               创建通行密钥

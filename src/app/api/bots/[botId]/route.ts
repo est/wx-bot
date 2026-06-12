@@ -1,28 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
+import { requireSession, requireBotOwner } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
 import { bots } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ botId: string }> }
 ) {
   try {
-    const session = await getSession();
-    if (!session.userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireSession();
+    if ("error" in auth) return auth.error;
 
     const { botId } = await params;
-    const bot = await db.query.bots.findFirst({
-      where: and(eq(bots.id, botId), eq(bots.userId, session.userId)),
-    });
+    const ownership = await requireBotOwner(botId, auth.userId);
+    if ("error" in ownership) return ownership.error;
 
-    if (!bot) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-
+    const bot = ownership.bot;
     return NextResponse.json({
       id: bot.id,
       name: bot.name,
@@ -33,7 +27,7 @@ export async function GET(
       updatedAt: bot.updatedAt,
     });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
 
@@ -42,22 +36,26 @@ export async function PUT(
   { params }: { params: Promise<{ botId: string }> }
 ) {
   try {
-    const session = await getSession();
-    if (!session.userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireSession();
+    if ("error" in auth) return auth.error;
 
     const { botId } = await params;
+    const ownership = await requireBotOwner(botId, auth.userId);
+    if ("error" in ownership) return ownership.error;
+
     const { name } = (await req.json()) as { name?: string };
+    if (!name || name.length > 64) {
+      return NextResponse.json({ error: "Invalid name" }, { status: 400 });
+    }
 
     await db
       .update(bots)
       .set({ name, updatedAt: new Date() })
-      .where(and(eq(bots.id, botId), eq(bots.userId, session.userId)));
+      .where(eq(bots.id, botId));
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
 
@@ -66,18 +64,17 @@ export async function DELETE(
   { params }: { params: Promise<{ botId: string }> }
 ) {
   try {
-    const session = await getSession();
-    if (!session.userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireSession();
+    if ("error" in auth) return auth.error;
 
     const { botId } = await params;
-    await db
-      .delete(bots)
-      .where(and(eq(bots.id, botId), eq(bots.userId, session.userId)));
+    const ownership = await requireBotOwner(botId, auth.userId);
+    if ("error" in ownership) return ownership.error;
+
+    await db.delete(bots).where(eq(bots.id, botId));
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

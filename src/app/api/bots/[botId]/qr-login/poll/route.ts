@@ -1,24 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
+import { requireSession, requireBotOwner } from "@/lib/auth/guard";
+import { pollQrLogin } from "@/lib/weixin/qr-login";
 import { db } from "@/lib/db";
 import { bots } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
-import { pollQrLogin } from "@/lib/weixin/qr-login";
+import { eq } from "drizzle-orm";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ botId: string }> }
 ) {
   try {
-    const session = await getSession();
-    if (!session.userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireSession();
+    if ("error" in auth) return auth.error;
 
     const { botId } = await params;
-    const searchParams = req.nextUrl.searchParams;
-    const loginSessionId = searchParams.get("sessionId");
+    const ownership = await requireBotOwner(botId, auth.userId);
+    if ("error" in ownership) return ownership.error;
 
+    const loginSessionId = req.nextUrl.searchParams.get("sessionId");
     if (!loginSessionId) {
       return NextResponse.json({ error: "Missing sessionId" }, { status: 400 });
     }
@@ -35,11 +34,11 @@ export async function GET(
           status: "active",
           updatedAt: new Date(),
         })
-        .where(and(eq(bots.id, botId), eq(bots.userId, session.userId)));
+        .where(eq(bots.id, botId));
     }
 
     return NextResponse.json(result);
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

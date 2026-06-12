@@ -1,19 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
+import { requireSession, requireBotOwner } from "@/lib/auth/guard";
 import { sendMediaMessage } from "@/lib/weixin/adapter";
 import type { MessageItem } from "@/lib/weixin/client";
+
+const VALID_MEDIA_TYPES = [2, 3, 4, 5];
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ botId: string }> }
 ) {
   try {
-    const session = await getSession();
-    if (!session.userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireSession();
+    if ("error" in auth) return auth.error;
 
     const { botId } = await params;
+    const ownership = await requireBotOwner(botId, auth.userId);
+    if ("error" in ownership) return ownership.error;
+
     const { toUserId, mediaRef, mediaType, contextToken } = (await req.json()) as {
       toUserId: string;
       mediaRef: {
@@ -26,10 +29,21 @@ export async function POST(
       contextToken?: string;
     };
 
-    const item: MessageItem = {
-      type: mediaType,
-    };
+    if (!toUserId || !mediaRef || !mediaType) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
 
+    if (!VALID_MEDIA_TYPES.includes(mediaType)) {
+      return NextResponse.json(
+        { error: "Invalid mediaType" },
+        { status: 400 }
+      );
+    }
+
+    const item: MessageItem = { type: mediaType };
     if (mediaType === 2) {
       item.image_item = { cdn_media: mediaRef };
     } else if (mediaType === 3) {

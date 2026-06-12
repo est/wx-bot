@@ -8,8 +8,16 @@ export interface SessionData {
   userName?: string;
 }
 
-const sessionOptions = {
-  password: process.env.SESSION_SECRET || "fallback-secret-at-least-32-characters",
+function getSessionPassword() {
+  const pw = process.env.SESSION_SECRET;
+  if (!pw) {
+    throw new Error("SESSION_SECRET environment variable is required");
+  }
+  return pw;
+}
+
+export const sessionOptions = {
+  password: getSessionPassword(),
   cookieName: "wx-bot-session",
   cookieOptions: {
     secure: process.env.NODE_ENV === "production",

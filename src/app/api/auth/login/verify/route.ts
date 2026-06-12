@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ verified: true, userId });
   } catch (err) {
     return NextResponse.json(
-      { error: String(err) },
+      { error: "Login failed" },
       { status: 400 }
     );
   }

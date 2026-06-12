@@ -18,8 +18,62 @@
 | 框架 | Next.js 16 (App Router) + TypeScript |
 | 部署 | Vercel (Serverless) |
 | 数据库 | Turso (libSQL) + Drizzle ORM |
-| 认证 | @simplewebauthn (WebAuthn) + iron-session |
+| 认证 | @simplewebauthn (WebAuthn) + iron-session (加密 cookie) |
 | 微信通信 | @tencent-weixin/openclaw-weixin (iLink API) |
+
+## 部署
+
+### 1. 创建 Turso 数据库
+
+```bash
+# 安装 Turso CLI
+curl -sSfL https://get.tur.so/install.sh | bash
+turso auth login
+
+# 创建数据库
+turso db create wx-bot
+turso db show wx-bot --url   # 保存为 TURSO_DATABASE_URL
+turso db tokens create wx-bot  # 保存为 TURSO_AUTH_TOKEN
+```
+
+### 2. 部署到 Vercel
+
+1. 在 [Vercel](https://vercel.com) 导入 GitHub 仓库 `est/wx-bot`
+2. 设置环境变量：
+
+| 变量 | 说明 |
+|---|---|
+| `TURSO_DATABASE_URL` | Turso 数据库连接串，如 `libsql://wx-bot-xxx.turso.io` |
+| `TURSO_AUTH_TOKEN` | Turso 认证 token |
+| `RP_ID` | 域名（如 `wx-bot.vercel.app`） |
+| `RP_NAME` | 应用名，如 `wx-bot` |
+| `ORIGIN` | 完整 origin，如 `https://wx-bot.vercel.app` |
+| `SESSION_SECRET` | 32+ 字符随机字符串，用于加密 session cookie |
+| `DEPLOY_HOOK_URL` | Deploy Hook URL（见步骤 3） |
+
+3. 创建 Deploy Hook（自动更新用）：
+   - 进入 Vercel 项目 → Settings → Deploy Hooks → Create
+   - 分支选 `main`，名称随意，复制生成的 URL 填入 `DEPLOY_HOOK_URL`
+
+4. 首次部署后初始化数据库：
+   ```bash
+   # 在本地或 Vercel CLI 中执行
+   npm run db:push
+   ```
+
+### 3. 自动更新
+
+项目配置了 Vercel Cron Job 每小时调用 `DEPLOY_HOOK_URL`，触发全新构建。`package.json` 使用 caret 范围 (`^2.0.0`) 且不提交 `package-lock.json`，确保每次构建拉取最新兼容版本。
+
+## 本地开发
+
+```bash
+cp .env.example .env
+# 填写 TURSO_DATABASE_URL, TURSO_AUTH_TOKEN, SESSION_SECRET
+npm install
+npm run db:push    # 初始化数据库表
+npm run dev        # 启动 → http://localhost:3000
+```
 
 ## 项目结构
 
@@ -31,22 +85,8 @@ src/
 │   └── dashboard/          # 管理后台 (bot列表, 聊天界面, 设置)
 ├── lib/                    # 核心逻辑
 │   ├── db/                 # 数据库 schema + Turso 客户端
-│   ├── auth/               # session + WebAuthn 工具
+│   ├── auth/               # session + WebAuthn + 路由守卫
 │   └── weixin/             # 微信集成层 (适配器, QR登录, SSE流, 媒体上传)
 ├── components/             # UI 组件
-└── middleware.ts           # 路由保护
+└── middleware.ts           # 路由保护 (cookie 验证)
 ```
-
-## 本地开发
-
-```bash
-cp .env.example .env
-# 填写 TURSO_DATABASE_URL, TURSO_AUTH_TOKEN, SESSION_SECRET
-npm install
-npm run db:push    # 初始化数据库表
-npm run dev        # 启动开发服务器 → http://localhost:3000
-```
-
-## 自动更新机制
-
-`package.json` 使用 `^2.0.0` caret 范围声明 `@tencent-weixin/openclaw-weixin` 依赖，`package-lock.json` 不提交到 git。Vercel Cron Job 每小时调用 Deploy Hook 触发全新构建 → `npm install` 拉取最新兼容版本 → 无感知更新。

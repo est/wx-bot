@@ -3,8 +3,16 @@ import type { NextRequest } from "next/server";
 import { getIronSession } from "iron-session";
 import type { SessionData } from "@/lib/auth/session";
 
+function getSessionPassword() {
+  const pw = process.env.SESSION_SECRET;
+  if (!pw) {
+    throw new Error("SESSION_SECRET environment variable is required");
+  }
+  return pw;
+}
+
 const sessionOptions = {
-  password: process.env.SESSION_SECRET || "fallback-secret-at-least-32-characters",
+  password: getSessionPassword(),
   cookieName: "wx-bot-session",
   cookieOptions: {
     secure: process.env.NODE_ENV === "production",

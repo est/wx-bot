@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
+import { requireSession } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
 import { bots } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -8,13 +8,11 @@ import { startQrLogin } from "@/lib/weixin/qr-login";
 
 export async function GET() {
   try {
-    const session = await getSession();
-    if (!session.userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireSession();
+    if ("error" in auth) return auth.error;
 
     const botList = await db.query.bots.findMany({
-      where: eq(bots.userId, session.userId),
+      where: eq(bots.userId, auth.userId),
       orderBy: (bots, { desc }) => [desc(bots.createdAt)],
     });
 
@@ -29,31 +27,30 @@ export async function GET() {
       }))
     );
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getSession();
-    if (!session.userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireSession();
+    if ("error" in auth) return auth.error;
 
     const { name } = (await req.json()) as { name?: string };
-    const botId = randomUUID();
+    const botName = name && name.length <= 64 ? name : "未命名";
 
+    const botId = randomUUID();
     const { sessionId, qrcodeUrl } = await startQrLogin();
 
     await db.insert(bots).values({
       id: botId,
-      userId: session.userId,
-      name: name || "未命名",
+      userId: auth.userId,
+      name: botName,
       status: "pending",
     });
 
     return NextResponse.json({ botId, sessionId, qrcodeUrl });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

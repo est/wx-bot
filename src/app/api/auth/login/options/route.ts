@@ -6,9 +6,6 @@ export async function GET() {
     const options = await generateLoginOptions();
     return NextResponse.json(options);
   } catch (err) {
-    return NextResponse.json(
-      { error: String(err) },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

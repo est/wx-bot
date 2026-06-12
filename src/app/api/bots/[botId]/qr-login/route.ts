@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
-import { db } from "@/lib/db";
-import { bots } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { requireSession, requireBotOwner } from "@/lib/auth/guard";
 import { startQrLogin } from "@/lib/weixin/qr-login";
 
 export async function POST(
@@ -10,24 +7,17 @@ export async function POST(
   { params }: { params: Promise<{ botId: string }> }
 ) {
   try {
-    const session = await getSession();
-    if (!session.userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireSession();
+    if ("error" in auth) return auth.error;
 
     const { botId } = await params;
-    const bot = await db.query.bots.findFirst({
-      where: and(eq(bots.id, botId), eq(bots.userId, session.userId)),
-    });
-
-    if (!bot) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
+    const ownership = await requireBotOwner(botId, auth.userId);
+    if ("error" in ownership) return ownership.error;
 
     const { sessionId, qrcodeUrl } = await startQrLogin();
 
     return NextResponse.json({ botId, sessionId, qrcodeUrl });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
