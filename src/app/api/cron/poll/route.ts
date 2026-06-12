@@ -11,7 +11,8 @@ const receiver = new Receiver({
 });
 
 const ACTIVE_THRESHOLD_MS = 30_000; // 30 seconds
-const POLL_INTERVAL_MS = 120_000; // 2 minutes
+const POLL_INTERVAL_SEC = 120; // 2 minutes
+const POLL_INTERVAL_MS = POLL_INTERVAL_SEC * 1000;
 
 async function scheduleNext() {
   const token = process.env.QSTASH_TOKEN;
@@ -21,7 +22,7 @@ async function scheduleNext() {
     ? `https://${process.env.VERCEL_URL}`
     : "http://localhost:3000";
 
-  const delaySec = Math.floor(POLL_INTERVAL_MS / 1000);
+  const delaySec = POLL_INTERVAL_SEC;
 
   await fetch("https://qstash.upstash.io/v2/publish", {
     method: "POST",

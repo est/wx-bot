@@ -17,13 +17,15 @@ async function ensureQstashChain() {
     ? `https://${process.env.VERCEL_URL}`
     : "http://localhost:3000";
 
+  const pollIntervalSec = 120;
+
   fetch("https://qstash.upstash.io/v2/publish", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${process.env.QSTASH_TOKEN}`,
       "Content-Type": "application/json",
       "Upstash-Deduplication-Id": "poll-chain",
-      "Upstash-Deduplication-Window": "120",
+      "Upstash-Deduplication-Window": `${pollIntervalSec}`,
     },
     body: JSON.stringify({ url: `${baseUrl}/api/cron/poll`, body: "{}" }),
   }).catch(() => {});
