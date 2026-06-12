@@ -1,8 +1,1 @@
-{
-  "crons": [
-    {
-      "path": "/api/cron/trigger-deploy",
-      "schedule": "1 2 3 * *"
-    }
-  ]
-}
+{}

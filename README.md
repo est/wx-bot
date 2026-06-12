@@ -45,22 +45,12 @@ turso db tokens create wx-bot  # 保存为 TURSO_AUTH_TOKEN
 |---|---|
 | `TURSO_DATABASE_URL` | Turso 数据库连接串，如 `libsql://wx-bot-xxx.turso.io` |
 | `TURSO_AUTH_TOKEN` | Turso 认证 token |
-| `SESSION_SECRET` | 32+ 字符随机字符串，用于加密 session cookie |
-| `DEPLOY_HOOK_URL` | Deploy Hook URL（见步骤 3） |
 
-3. 创建 Deploy Hook（自动更新用）：
-   - 进入 Vercel 项目 → Settings → Deploy Hooks → Create
-   - 分支选 `main`，名称随意，复制生成的 URL 填入 `DEPLOY_HOOK_URL`
-
-4. 首次部署后初始化数据库：
+3. 首次部署后初始化数据库：
    ```bash
    # 在本地或 Vercel CLI 中执行
    npm run db:push
    ```
-
-### 3. 自动更新
-
-项目配置了 Vercel Cron Job 每小时调用 `DEPLOY_HOOK_URL`，触发全新构建。`package.json` 使用 caret 范围 (`^2.0.0`) 且不提交 `package-lock.json`，确保每次构建拉取最新兼容版本。
 
 ## 本地开发
 
