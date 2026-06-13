@@ -4,8 +4,15 @@ let silkModule: any = null;
 
 async function loadSilk() {
   if (silkModule) return silkModule;
-  // @ts-expect-error CDN import
-  silkModule = await import("https://cdn.jsdelivr.net/npm/silk-wasm@3.7.1/lib/index.mjs");
+  console.log("[silk] loading from CDN...");
+  try {
+    // @ts-expect-error CDN import
+    silkModule = await import("https://esm.sh/silk-wasm@3.7.1?standalone");
+    console.log("[silk] loaded, exports:", Object.keys(silkModule));
+  } catch (err) {
+    console.error("[silk] load failed:", err);
+    throw err;
+  }
   return silkModule;
 }
 
