@@ -10,14 +10,10 @@ export async function uploadMedia(
   toUserId: string
 ) {
   const rawsize = fileBuffer.length;
-  const rawfilemd5 = crypto
-    .createHash("md5")
-    .update(fileBuffer)
-    .digest("hex");
+  const rawfilemd5 = crypto.createHash("md5").update(fileBuffer).digest("hex");
   const aeskey = crypto.randomBytes(16);
   const encrypted = encryptAesEcb(fileBuffer, aeskey);
   const filesize = encrypted.length;
-  const aeskeyHex = aeskey.toString("hex");
 
   let mediaType: number = UploadMediaType.FILE;
   if (mimeType.startsWith("image/")) mediaType = UploadMediaType.IMAGE;
@@ -30,31 +26,44 @@ export async function uploadMedia(
     rawsize,
     rawfilemd5,
     filesize,
-    aeskey: aeskeyHex,
+    aeskey: aeskey.toString("hex"),
   });
 
-  if (uploadResp.upload_full_url && uploadResp.upload_param) {
+  // Upload to CDN via POST (matches official openclaw-weixin package)
+  // Read download param from x-encrypted-param response header
+  let downloadParam = uploadResp.upload_param;
+
+  if (uploadResp.upload_full_url) {
     let lastErr: unknown;
     for (let i = 0; i < 3; i++) {
       try {
         const res = await fetch(uploadResp.upload_full_url, {
-          method: "PUT",
+          method: "POST",
           headers: { "Content-Type": "application/octet-stream" },
           body: new Uint8Array(encrypted),
         });
-        if (res.ok) break;
-        lastErr = new Error(`Upload failed: ${res.status}`);
+        if (res.status >= 400 && res.status < 500) {
+          throw new Error(`CDN client error ${res.status}`);
+        }
+        if (res.status !== 200) {
+          throw new Error(`CDN server error ${res.status}`);
+        }
+        // Official package reads download param from response header
+        const headerParam = res.headers.get("x-encrypted-param");
+        if (headerParam) downloadParam = headerParam;
+        break;
       } catch (err) {
         lastErr = err;
+        if (i < 2) await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
       }
-      if (i < 2) await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
     }
-    if (lastErr) throw lastErr;
+    if (lastErr && !downloadParam) throw lastErr;
   }
 
+  // aes_key in message must be base64 (not hex)
   return {
-    encrypt_query_param: uploadResp.upload_param,
-    aes_key: aeskeyHex,
-    encrypt_type: 0,
+    encrypt_query_param: downloadParam,
+    aes_key: aeskey.toString("base64"),
+    encrypt_type: 1,
   };
 }
