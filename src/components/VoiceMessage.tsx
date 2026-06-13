@@ -21,12 +21,26 @@ export default function VoiceMessage({
     (async () => {
       try {
         const res = await fetch(src);
-        if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
+        if (!res.ok) {
+          console.error("[VoiceMessage] fetch failed:", res.status, src);
+          throw new Error(`fetch failed: ${res.status}`);
+        }
         const buf = await res.arrayBuffer();
         if (cancelled) return;
-        url = await decodeSilkToWavUrl(buf);
-        if (!cancelled) setWavUrl(url);
-      } catch {
+
+        // Try SILK decode, fall back to direct play if it fails
+        try {
+          url = await decodeSilkToWavUrl(buf);
+          if (!cancelled) setWavUrl(url);
+        } catch (silkErr) {
+          console.warn("[VoiceMessage] SILK decode failed, trying raw audio:", silkErr);
+          // Fallback: try playing the raw data as-is
+          const blob = new Blob([buf], { type: "audio/ogg" });
+          url = URL.createObjectURL(blob);
+          if (!cancelled) setWavUrl(url);
+        }
+      } catch (err) {
+        console.error("[VoiceMessage] error:", err);
         if (!cancelled) setError(true);
       } finally {
         if (!cancelled) setLoading(false);

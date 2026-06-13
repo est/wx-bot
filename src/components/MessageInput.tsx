@@ -98,23 +98,33 @@ export default function MessageInput({
         stream.getTracks().forEach((t) => t.stop());
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         const arrayBuffer = await blob.arrayBuffer();
+        console.log("[Recording] captured", arrayBuffer.byteLength, "bytes");
 
-        // Decode to raw PCM via AudioContext
-        const audioCtx = new AudioContext({ sampleRate: 24000 });
-        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-        const pcmFloat = audioBuffer.getChannelData(0);
-        const pcmInt16 = new Int16Array(pcmFloat.length);
-        for (let i = 0; i < pcmFloat.length; i++) {
-          const s = Math.max(-1, Math.min(1, pcmFloat[i]));
-          pcmInt16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-        }
-
-        // Encode to SILK
-        const silkData = await encodePcmToSilk(pcmInt16.buffer, 24000);
-
-        // Upload and send
-        setSending(true);
         try {
+          // Decode to raw PCM via AudioContext
+          const audioCtx = new AudioContext({ sampleRate: 24000 });
+          const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+          const pcmFloat = audioBuffer.getChannelData(0);
+          const pcmInt16 = new Int16Array(pcmFloat.length);
+          for (let i = 0; i < pcmFloat.length; i++) {
+            const s = Math.max(-1, Math.min(1, pcmFloat[i]));
+            pcmInt16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+          }
+          console.log("[Recording] PCM samples:", pcmInt16.length);
+
+          // Encode to SILK (loads from CDN on first call)
+          let silkData: Uint8Array;
+          try {
+            silkData = await encodePcmToSilk(pcmInt16.buffer, 24000);
+          } catch (silkErr) {
+            console.error("[Recording] SILK encode failed, sending raw audio:", silkErr);
+            // Fallback: send as raw audio
+            silkData = new Uint8Array(pcmInt16.buffer);
+          }
+          console.log("[Recording] encoded:", silkData.length, "bytes");
+
+          // Upload and send
+          setSending(true);
           const formData = new FormData();
           formData.append("file", new Blob([new Uint8Array(silkData)], { type: "audio/silk" }), "voice.silk");
           const uploadResp = await fetch(`/api/bots/${botId}/media/upload`, {
@@ -122,13 +132,17 @@ export default function MessageInput({
             body: formData,
           });
           const uploadData = await uploadResp.json();
+          console.log("[Recording] upload response:", uploadResp.status, uploadData);
           if (!uploadResp.ok) throw new Error(uploadData.error);
 
-          await fetch(`/api/bots/${botId}/media/send`, {
+          const sendResp = await fetch(`/api/bots/${botId}/media/send`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ mediaRef: uploadData.mediaRef, mediaType: 3 }),
           });
+          const sendData = await sendResp.json();
+          console.log("[Recording] send response:", sendResp.status, sendData);
+          if (!sendResp.ok) throw new Error(sendData.error);
           onSend();
         } catch (err) {
           console.error("Voice send failed:", err);
