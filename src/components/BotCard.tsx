@@ -25,6 +25,10 @@ const statusLabels: Record<string, string> = {
   error: "异常",
 };
 
+function fmtDate(d: Date) {
+  return new Date(d).toISOString().replace("T", " ").slice(0, 19);
+}
+
 export default function BotCard({ bot, onDelete }: { bot: Bot; onDelete?: () => void }) {
   const router = useRouter();
 
@@ -34,8 +38,6 @@ export default function BotCard({ bot, onDelete }: { bot: Bot; onDelete?: () => 
     await fetch(`/api/bots/${bot.id}`, { method: "DELETE" });
     onDelete?.();
   }
-
-  const dateStr = new Date(bot.createdAt).toISOString().slice(0, 10);
 
   return (
     <div
@@ -61,9 +63,10 @@ export default function BotCard({ bot, onDelete }: { bot: Bot; onDelete?: () => 
           </button>
         </div>
       </div>
-      <div className="mt-2 text-sm text-gray-500">
+      <div className="mt-2 text-xs text-gray-400 space-y-0.5">
         {bot.ownerWxUserId && <p>微信用户: {bot.ownerWxUserId}</p>}
-        <p className="mt-1">创建于 {dateStr}</p>
+        <p>创建: {fmtDate(bot.createdAt)}</p>
+        <p>最后轮询: {fmtDate(bot.updatedAt)}</p>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
-import { bots } from "@/lib/db/schema";
+import { bots, messages } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import * as WeixinApi from "./client";
 import type { MessageItem, GetUploadUrlReq } from "./client";
@@ -23,29 +23,57 @@ export async function fetchUpdates(botId: string, buf?: string) {
   });
 }
 
+async function sendAndCapture(
+  botId: string,
+  toUserId: string,
+  contextToken: string | undefined,
+  item: MessageItem
+): Promise<{ responseBody: string }> {
+  const { token, baseUrl } = await getBotCredentials(botId);
+  const msg = {
+    from_user_id: "",
+    to_user_id: toUserId,
+    client_id: randomUUID(),
+    message_type: 2,
+    message_state: 2,
+    item_list: [item],
+    context_token: contextToken,
+  };
+  const body = JSON.stringify({
+    msg,
+    base_info: WeixinApi.buildBaseInfo(),
+  });
+
+  const responseBody = await WeixinApi.apiPostFetch({
+    baseUrl,
+    endpoint: "ilink/bot/sendmessage",
+    body,
+    token,
+    timeoutMs: 15_000,
+    label: "sendMessage",
+  });
+
+  // Store in messages table
+  await db.insert(messages).values({
+    botId,
+    fromUserId: "",
+    toUserId,
+    direction: "out",
+    messageType: 2,
+    content: JSON.stringify([item]),
+    responseBody,
+  });
+
+  return { responseBody };
+}
+
 export async function sendTextMessage(
   botId: string,
-  params: {
-    toUserId: string;
-    text: string;
-    contextToken?: string;
-  }
+  params: { toUserId: string; text: string; contextToken?: string }
 ) {
-  const { token, baseUrl } = await getBotCredentials(botId);
-  await WeixinApi.sendMessage({
-    baseUrl,
-    token,
-    body: {
-      msg: {
-        from_user_id: "",
-        to_user_id: params.toUserId,
-        client_id: randomUUID(),
-        message_type: 2, // BOT
-        message_state: 2, // FINISH
-        item_list: [{ type: 1, text_item: { text: params.text } }],
-        context_token: params.contextToken,
-      },
-    },
+  return sendAndCapture(botId, params.toUserId, params.contextToken, {
+    type: 1,
+    text_item: { text: params.text },
   });
 }
 
@@ -66,21 +94,40 @@ export async function sendMediaMessage(
   }
 ) {
   const { token, baseUrl } = await getBotCredentials(botId);
-  await WeixinApi.sendMessage({
-    baseUrl,
-    token,
-    body: {
-      msg: {
-        from_user_id: "",
-        to_user_id: params.toUserId,
-        client_id: randomUUID(),
-        message_type: 2, // BOT
-        message_state: 2, // FINISH
-        item_list: params.itemList,
-        context_token: params.contextToken,
-      },
-    },
+  const msg = {
+    from_user_id: "",
+    to_user_id: params.toUserId,
+    client_id: randomUUID(),
+    message_type: 2,
+    message_state: 2,
+    item_list: params.itemList,
+    context_token: params.contextToken,
+  };
+  const body = JSON.stringify({
+    msg,
+    base_info: WeixinApi.buildBaseInfo(),
   });
+
+  const responseBody = await WeixinApi.apiPostFetch({
+    baseUrl,
+    endpoint: "ilink/bot/sendmessage",
+    body,
+    token,
+    timeoutMs: 15_000,
+    label: "sendMessage",
+  });
+
+  await db.insert(messages).values({
+    botId,
+    fromUserId: "",
+    toUserId: params.toUserId,
+    direction: "out",
+    messageType: 2,
+    content: JSON.stringify(params.itemList),
+    responseBody,
+  });
+
+  return { responseBody };
 }
 
 export async function updateGetUpdatesBuf(botId: string, buf: string) {

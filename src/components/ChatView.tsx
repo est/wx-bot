@@ -83,7 +83,7 @@ function MessageBubble({
   botId,
   onImageClick,
 }: {
-  msg: WeixinMessage;
+  msg: WeixinMessage & { direction?: string; response_body?: string };
   botId: string;
   onImageClick: (url: string) => void;
 }) {
@@ -101,6 +101,11 @@ function MessageBubble({
         {msg.create_time_ms && (
           <p className={`mt-1 text-xs ${out ? "text-blue-100" : "text-gray-400"}`}>
             {new Date(msg.create_time_ms).toLocaleTimeString("zh-CN")}
+          </p>
+        )}
+        {out && msg.response_body && (
+          <p className={`mt-1 text-xs ${out ? "text-blue-200" : "text-gray-400"}`}>
+            响应: {msg.response_body}
           </p>
         )}
         <button

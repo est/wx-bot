@@ -61,6 +61,7 @@ export const messages = sqliteTable("messages", {
   direction: text("direction").notNull(),
   messageType: integer("message_type").notNull(),
   content: text("content").notNull(),
+  responseBody: text("response_body"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),

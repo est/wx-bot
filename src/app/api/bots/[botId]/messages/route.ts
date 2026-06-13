@@ -44,6 +44,7 @@ export async function GET(
         direction: r.direction,
         context_token: r.contextToken,
         item_list: JSON.parse(r.content),
+        response_body: r.responseBody,
         create_time_ms: r.createdAt ? new Date(r.createdAt).getTime() : null,
       }))
     );
