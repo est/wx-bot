@@ -16,7 +16,7 @@ import { randomUUID } from "node:crypto";
 import { getSession } from "./session";
 
 export function getRpId() {
-  return process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.RP_ID || "localhost";
+  return process.env.VERCEL_URL || process.env.RP_ID || "localhost";
 }
 
 export function getOriginFromRequest(req: Request) {
@@ -94,13 +94,23 @@ export async function verifyRegister(origin: string, response: RegistrationRespo
   session.userId = userId;
   await session.save();
 
-  return userId;
+  return { userId, credentialId: credential.id };
 }
 
-export async function generateLoginOptions() {
+export async function generateLoginOptions(credentialId?: string) {
   const options = await generateAuthenticationOptions({
     rpID: getRpId(),
     userVerification: "preferred",
+    ...(credentialId
+      ? {
+          allowCredentials: [
+            {
+              id: credentialId,
+              transports: ["internal", "hybrid"] as AuthenticatorTransport[],
+            },
+          ],
+        }
+      : {}),
   });
 
   const session = await getSession();
@@ -150,5 +160,5 @@ export async function verifyLogin(origin: string, response: AuthenticationRespon
   session.userId = passkeyRecord.userId;
   await session.save();
 
-  return passkeyRecord.userId;
+  return { userId: passkeyRecord.userId, credentialId: passkeyRecord.id };
 }

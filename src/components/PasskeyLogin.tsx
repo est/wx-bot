@@ -12,6 +12,58 @@ export default function PasskeyLogin() {
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
 
+  async function handleLogin() {
+    setStatus("正在验证通行密钥...");
+    setError("");
+    try {
+      const optionsResp = await fetch("/api/auth/login/options");
+      const optionsJSON = await optionsResp.json();
+      if (!optionsResp.ok) throw new Error(optionsJSON.error);
+
+      const authResp = await startAuthentication({ optionsJSON });
+
+      const verifyResp = await fetch("/api/auth/login/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(authResp),
+      });
+      const verifyJSON = await verifyResp.json();
+      if (!verifyResp.ok) throw new Error(verifyJSON.error);
+
+      window.location.href = "/dashboard";
+    } catch (err) {
+      setError(String(err));
+      setStatus("");
+    }
+  }
+
+  async function handleLoginChooseAccount() {
+    setStatus("选择账号...");
+    setError("");
+    try {
+      // Clear cookie to get all credentials
+      document.cookie = "last_credential_id=; path=/; max-age=0";
+      const optionsResp = await fetch("/api/auth/login/options");
+      const optionsJSON = await optionsResp.json();
+      if (!optionsResp.ok) throw new Error(optionsJSON.error);
+
+      const authResp = await startAuthentication({ optionsJSON });
+
+      const verifyResp = await fetch("/api/auth/login/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(authResp),
+      });
+      const verifyJSON = await verifyResp.json();
+      if (!verifyResp.ok) throw new Error(verifyJSON.error);
+
+      window.location.href = "/dashboard";
+    } catch (err) {
+      setError(String(err));
+      setStatus("");
+    }
+  }
+
   async function handleRegister() {
     if (!name.trim()) return;
     setStatus("正在创建通行密钥...");
@@ -35,33 +87,6 @@ export default function PasskeyLogin() {
       const verifyJSON = await verifyResp.json();
       if (!verifyResp.ok) throw new Error(verifyJSON.error);
 
-      setStatus("注册成功！");
-      window.location.href = "/dashboard";
-    } catch (err) {
-      setError(String(err));
-      setStatus("");
-    }
-  }
-
-  async function handleLogin() {
-    setStatus("正在验证通行密钥...");
-    setError("");
-    try {
-      const optionsResp = await fetch("/api/auth/login/options");
-      const optionsJSON = await optionsResp.json();
-      if (!optionsResp.ok) throw new Error(optionsJSON.error);
-
-      const authResp = await startAuthentication({ optionsJSON });
-
-      const verifyResp = await fetch("/api/auth/login/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(authResp),
-      });
-      const verifyJSON = await verifyResp.json();
-      if (!verifyResp.ok) throw new Error(verifyJSON.error);
-
-      setStatus("登录成功！");
       window.location.href = "/dashboard";
     } catch (err) {
       setError(String(err));
@@ -78,15 +103,11 @@ export default function PasskeyLogin() {
         </div>
 
         {error && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
-            {error}
-          </div>
+          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</div>
         )}
 
         {status && (
-          <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-600">
-            {status}
-          </div>
+          <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-600">{status}</div>
         )}
 
         {mode === "login" ? (
@@ -97,6 +118,16 @@ export default function PasskeyLogin() {
               className="w-full rounded-lg bg-blue-600 px-4 py-3 text-white font-medium hover:bg-blue-700 disabled:opacity-50"
             >
               使用通行密钥登录
+            </button>
+            <p className="text-center text-xs text-gray-400">
+              上次登录的设备将自动弹出验证
+            </p>
+            <button
+              onClick={handleLoginChooseAccount}
+              disabled={!!status}
+              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+            >
+              选择其他账号
             </button>
             <p className="text-center text-sm text-gray-500">
               还没有账号？{" "}
