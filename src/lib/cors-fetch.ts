@@ -1,23 +1,36 @@
 /**
- * Fetch media from Weixin CDN. All processing server-side via media-proxy.
- * Matches the official openclaw-weixin package approach (Node.js fetch + decrypt).
+ * Media URL helpers.
+ *
+ * The proxy uses the official openclaw-weixin package's downloadAndDecryptBuffer()
+ * for CDN fetch + AES-ECB decrypt. We pass the raw message fields (eqp, ak, fu)
+ * to the proxy, which delegates to the package.
+ *
+ * This way, if the package changes its URL construction or decrypt logic,
+ * the proxy adapts automatically on the next deploy.
  */
 
-const MEDIA_PROXY = "/api/media-proxy?url=";
+import type { CDNMedia } from "@/lib/weixin/types";
 
-export function cdnDirectUrl(cdn: { full_url?: string; encrypt_query_param?: string; aes_key?: string }): string | null {
-  if (cdn.full_url && !cdn.aes_key) return cdn.full_url; // plain, no decrypt needed
-  return null; // encrypted, must use proxy
+const MEDIA_PROXY = "/api/media-proxy";
+
+/**
+ * Build a proxy URL from raw CDN media fields.
+ * Pass the fields directly from the message — don't pre-process them.
+ */
+export function cdnProxyUrl(cdn: CDNMedia, mime: string): string | null {
+  if (!cdn.encrypt_query_param && !cdn.full_url) return null;
+
+  const p = new URLSearchParams({ mime });
+  if (cdn.encrypt_query_param) p.set("eqp", cdn.encrypt_query_param);
+  if (cdn.aes_key) p.set("ak", cdn.aes_key);
+  if (cdn.full_url) p.set("fu", cdn.full_url);
+  return `${MEDIA_PROXY}?${p}`;
 }
 
-export function cdnProxyUrl(cdn: { full_url?: string; encrypt_query_param?: string; aes_key?: string }, mime: string): string | null {
-  const url = cdn.full_url || (cdn.encrypt_query_param
-    ? `https://novac2c.cdn.weixin.qq.com/c2c/download?encrypted_query_param=${encodeURIComponent(cdn.encrypt_query_param)}`
-    : null);
-  if (!url) return null;
-
-  let proxyUrl = `${MEDIA_PROXY}${encodeURIComponent(url)}`;
-  if (cdn.aes_key) proxyUrl += `&key=${encodeURIComponent(cdn.aes_key)}`;
-  proxyUrl += `&mime=${encodeURIComponent(mime)}`;
-  return proxyUrl;
+/**
+ * Get URL for a plain (unencrypted) CDN resource.
+ */
+export function cdnPlainUrl(cdn: CDNMedia): string | null {
+  if (cdn.full_url && !cdn.aes_key) return cdn.full_url;
+  return null;
 }

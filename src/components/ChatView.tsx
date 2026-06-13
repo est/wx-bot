@@ -3,21 +3,18 @@
 import { useState } from "react";
 import type { WeixinMessage, MessageItem, CDNMedia } from "@/lib/weixin/types";
 import VoiceMessage from "./VoiceMessage";
-import { cdnProxyUrl, cdnDirectUrl } from "@/lib/cors-fetch";
+import { cdnProxyUrl, cdnPlainUrl } from "@/lib/cors-fetch";
 
 function mediaUrl(cdn: CDNMedia | undefined, mime: string): string | null {
   if (!cdn) return null;
-  // Plain URL, no decrypt needed
-  const direct = cdnDirectUrl(cdn);
-  if (direct) return direct;
-  // Encrypted → server-side decrypt via media-proxy
+  const plain = cdnPlainUrl(cdn);
+  if (plain) return plain;
   return cdnProxyUrl(cdn, mime);
 }
 
 function ImageMessage({ cdn }: { cdn: CDNMedia }) {
   const [expanded, setExpanded] = useState(false);
   const src = mediaUrl(cdn, "image/jpeg");
-
   if (!src) return <span className="text-xs text-gray-400">[图片]</span>;
 
   return (
