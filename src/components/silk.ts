@@ -7,7 +7,7 @@ async function loadSilk() {
   console.log("[silk] loading from CDN...");
   try {
   // @ts-expect-error CDN import
-  silkModule = await import("https://esm.sh/silk-wasm@3.7.1");
+  silkModule = await import("https://unpkg.com/silk-wasm@3.7.1/lib/index.mjs");
     console.log("[silk] loaded, exports:", Object.keys(silkModule));
   } catch (err) {
     console.error("[silk] load failed:", err);
