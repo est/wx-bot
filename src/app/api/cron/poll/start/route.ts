@@ -6,8 +6,8 @@ export async function POST() {
     return NextResponse.json({ ok: false, reason: "QSTASH_TOKEN not set" });
   }
 
-  const baseUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
+  const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
     : "http://localhost:3000";
 
   const resp = await fetch("https://qstash.upstash.io/v2/publish", {

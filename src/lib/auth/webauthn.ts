@@ -16,7 +16,7 @@ import { randomUUID } from "node:crypto";
 import { getSession } from "./session";
 
 export function getRpId() {
-  return process.env.VERCEL_URL || process.env.RP_ID || "localhost";
+  return process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.RP_ID || "localhost";
 }
 
 export function getOriginFromRequest(req: Request) {

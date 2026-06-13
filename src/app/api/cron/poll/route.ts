@@ -18,8 +18,8 @@ async function scheduleNext() {
   const token = process.env.QSTASH_TOKEN;
   if (!token) return;
 
-  const baseUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
+  const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
     : "http://localhost:3000";
 
   const delaySec = POLL_INTERVAL_SEC;
@@ -57,7 +57,7 @@ async function handlePoll(req: Request) {
       const isValid = await receiver.verify({
         signature: sig,
         body,
-        url: `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"}/api/cron/poll`,
+        url: `${process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000"}/api/cron/poll`,
       });
       if (!isValid) {
         return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
