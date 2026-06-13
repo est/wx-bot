@@ -1,6 +1,5 @@
 // silk.mjs — standalone silk-wasm wrapper
-// Loaded via <script type="module"> by React component
-// Sets window.__silk for access from bundled code
+// Loaded on demand by browser import(), not bundled by Next.js
 
 const CDN = "https://unpkg.com/silk-wasm@3.7.1/lib/index.mjs";
 
@@ -12,17 +11,17 @@ async function load() {
   return mod;
 }
 
-window.__silk = {
-  async decode(silkBytes, sampleRate = 24000) {
-    const m = await load();
-    return m.decode(silkBytes, sampleRate);
-  },
-  async encode(pcmBuffer, sampleRate = 24000) {
-    const m = await load();
-    return m.encode(pcmBuffer, sampleRate);
-  },
-  async isSilk(data) {
-    const m = await load();
-    return m.isSilk(data);
-  },
-};
+export async function decode(silkBytes, sampleRate = 24000) {
+  const m = await load();
+  return m.decode(silkBytes, sampleRate);
+}
+
+export async function encode(pcmBuffer, sampleRate = 24000) {
+  const m = await load();
+  return m.encode(pcmBuffer, sampleRate);
+}
+
+export async function isSilk(data) {
+  const m = await load();
+  return m.isSilk(data);
+}

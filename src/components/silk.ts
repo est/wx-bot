@@ -1,33 +1,10 @@
-// silk.ts — loads public/silk.mjs via <script> tag (bypasses bundler)
+// Load silk-wasm from public/silk.mjs
+// Use URL constructor to prevent bundler from intercepting import()
+const SILK_URL = new URL("/silk.mjs", window.location.origin).href;
 
-let silkPromise: Promise<any> | null = null;
-
-function loadSilk(): Promise<any> {
-  if (silkPromise) return silkPromise;
-
-  silkPromise = new Promise((resolve, reject) => {
-    // Check if already loaded
-    if ((window as any).__silk) {
-      resolve((window as any).__silk);
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.type = "module";
-    script.src = "/silk.mjs";
-    script.onload = () => {
-      // silk.mjs sets window.__silk
-      if ((window as any).__silk) {
-        resolve((window as any).__silk);
-      } else {
-        reject(new Error("silk.mjs loaded but window.__silk not set"));
-      }
-    };
-    script.onerror = () => reject(new Error("Failed to load silk.mjs"));
-    document.head.appendChild(script);
-  });
-
-  return silkPromise;
+async function loadSilk() {
+  const mod = await import(/* webpackIgnore: true */ SILK_URL);
+  return mod;
 }
 
 function pcmToWav(pcm: Int16Array, sampleRate: number): Blob {
