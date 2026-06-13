@@ -26,7 +26,15 @@ const statusLabels: Record<string, string> = {
 };
 
 function fmtDate(d: Date) {
-  return new Date(d).toISOString().replace("T", " ").slice(0, 19);
+  return new Date(d).toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
 }
 
 export default function BotCard({ bot, onDelete }: { bot: Bot; onDelete?: () => void }) {
@@ -65,7 +73,7 @@ export default function BotCard({ bot, onDelete }: { bot: Bot; onDelete?: () => 
       </div>
       <div className="mt-2 text-xs text-gray-400 space-y-0.5">
         {bot.ownerWxUserId && <p>微信用户: {bot.ownerWxUserId}</p>}
-        <p>创建: {fmtDate(bot.createdAt)}</p>
+        <p>创建时间: {fmtDate(bot.createdAt)}</p>
         <p>最后轮询: {fmtDate(bot.updatedAt)}</p>
       </div>
     </div>

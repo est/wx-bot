@@ -111,11 +111,6 @@ function MessageBubble({
             {new Date(msg.create_time_ms).toLocaleTimeString("zh-CN")}
           </p>
         )}
-        {out && msg.response_body && (
-          <p className={`mt-1 text-xs ${out ? "text-blue-200" : "text-gray-400"}`}>
-            响应: {msg.response_body}
-          </p>
-        )}
         <button
           onClick={() => setShowJson(!showJson)}
           className={`absolute -top-2 -right-2 h-5 w-5 rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition ${
