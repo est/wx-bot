@@ -1,47 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { WeixinMessage, MessageItem, CDNMedia } from "@/lib/weixin/types";
 import VoiceMessage from "./VoiceMessage";
+import { fetchWithCorsFallback } from "@/lib/cors-fetch";
 
-// AES-128-ECB decrypt for images in browser
-async function decryptImageUrl(cdn: CDNMedia): Promise<string | null> {
-  if (!cdn.full_url && !cdn.encrypt_query_param) return null;
-  if (cdn.full_url && !cdn.aes_key) return cdn.full_url; // plain
-
-  const url = cdn.full_url || `https://novac2c.cdn.weixin.qq.com/c2c/download?encrypted_query_param=${encodeURIComponent(cdn.encrypt_query_param!)}`;
-  const keyB64 = cdn.aes_key;
-  if (!keyB64) return url; // no key, try as-is
-
-  try {
-    const res = await fetch(url);
-    const buf = await res.arrayBuffer();
-    const keyBytes = new Uint8Array(atob(keyB64).split("").map(c => c.charCodeAt(0)));
-    let key: Uint8Array;
-    if (keyBytes.length === 16) {
-      key = keyBytes;
-    } else if (keyBytes.length === 32) {
-      const hex = new TextDecoder().decode(keyBytes);
-      key = new Uint8Array(hex.match(/.{2}/g)!.map(b => parseInt(b, 16)));
-    } else {
-      return url;
-    }
-    const cryptoKey = await crypto.subtle.importKey("raw", new Uint8Array(key), { name: "AES-ECB" }, false, ["decrypt"]);
-    const decrypted = await crypto.subtle.decrypt({ name: "AES-ECB" }, cryptoKey, buf);
-    return URL.createObjectURL(new Blob([decrypted]));
-  } catch (err) {
-    console.error("[decryptImageUrl] failed:", err);
-    return url;
+async function decryptToBlobUrl(data: ArrayBuffer, keyBase64: string): Promise<string> {
+  const keyBytes = new Uint8Array(atob(keyBase64).split("").map(c => c.charCodeAt(0)));
+  let key: Uint8Array;
+  if (keyBytes.length === 16) {
+    key = keyBytes;
+  } else if (keyBytes.length === 32) {
+    const hex = new TextDecoder().decode(keyBytes);
+    key = new Uint8Array(hex.match(/.{2}/g)!.map(b => parseInt(b, 16)));
+  } else {
+    throw new Error(`Invalid key length: ${keyBytes.length}`);
   }
+  const cryptoKey = await crypto.subtle.importKey("raw", new Uint8Array(key), { name: "AES-ECB" }, false, ["decrypt"]);
+  const decrypted = await crypto.subtle.decrypt({ name: "AES-ECB" }, cryptoKey, data);
+  return URL.createObjectURL(new Blob([decrypted]));
 }
 
-function getVoiceSrc(cdn: CDNMedia | undefined): { url: string; aesKey?: string } | null {
-  if (!cdn) return null;
-  const url = cdn.full_url || (cdn.encrypt_query_param
-    ? `https://novac2c.cdn.weixin.qq.com/c2c/download?encrypted_query_param=${encodeURIComponent(cdn.encrypt_query_param)}`
-    : null);
-  if (!url) return null;
-  return { url, aesKey: cdn.aes_key };
+function cdnDirectUrl(cdn: CDNMedia): string | null {
+  if (cdn.full_url) return cdn.full_url;
+  if (cdn.encrypt_query_param) {
+    return `https://novac2c.cdn.weixin.qq.com/c2c/download?encrypted_query_param=${encodeURIComponent(cdn.encrypt_query_param)}`;
+  }
+  return null;
 }
 
 function ImageMessage({ cdn }: { cdn: CDNMedia }) {
@@ -49,12 +34,26 @@ function ImageMessage({ cdn }: { cdn: CDNMedia }) {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
 
-  if (!src && loading) {
-    decryptImageUrl(cdn).then(url => {
-      setSrc(url);
-      setLoading(false);
-    });
-  }
+  useEffect(() => {
+    const url = cdnDirectUrl(cdn);
+    if (!url) { setLoading(false); return; }
+
+    (async () => {
+      try {
+        const buf = await fetchWithCorsFallback(url);
+        if (cdn.aes_key) {
+          const blobUrl = await decryptToBlobUrl(buf, cdn.aes_key);
+          setSrc(blobUrl);
+        } else {
+          setSrc(URL.createObjectURL(new Blob([buf])));
+        }
+      } catch (err) {
+        console.error("[ImageMessage] error:", err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
   if (loading) return <span className="text-xs text-gray-400">加载图片...</span>;
   if (!src) return <span className="text-xs text-gray-400">[图片]</span>;
@@ -77,6 +76,13 @@ function ImageMessage({ cdn }: { cdn: CDNMedia }) {
       )}
     </>
   );
+}
+
+function getVoiceSrc(cdn: CDNMedia | undefined): { url: string; aesKey?: string } | null {
+  if (!cdn) return null;
+  const url = cdnDirectUrl(cdn);
+  if (!url) return null;
+  return { url, aesKey: cdn.aes_key };
 }
 
 function renderItem(botId: string, item: MessageItem, index: number) {

@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { decodeSilkToWavUrl } from "./silk";
+import { fetchWithCorsFallback } from "@/lib/cors-fetch";
 
-// AES-128-ECB decrypt in browser
 async function aesDecrypt(data: ArrayBuffer, keyBase64: string): Promise<ArrayBuffer> {
   const keyBytes = new Uint8Array(atob(keyBase64).split("").map(c => c.charCodeAt(0)));
   let key: Uint8Array;
@@ -43,18 +43,14 @@ export default function VoiceMessage({
 
     (async () => {
       try {
-        const res = await fetch(src);
-        if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
-        let buf = await res.arrayBuffer();
+        let buf = await fetchWithCorsFallback(src);
 
-        // Decrypt if key provided
         if (aesKey) {
           buf = await aesDecrypt(buf, aesKey);
         }
 
         if (cancelled) return;
 
-        // Decode SILK to WAV
         try {
           url = await decodeSilkToWavUrl(new Uint8Array(buf));
           if (!cancelled) setWavUrl(url);
