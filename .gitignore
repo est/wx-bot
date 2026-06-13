@@ -50,6 +50,9 @@ package-lock.json
 # Drizzle migrations (generated)
 drizzle/
 
+# Auto-generated files
+src/lib/weixin/types.ts
+
 # MiMo Code plans
 .mimocode/
 
