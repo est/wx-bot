@@ -79,7 +79,7 @@ export default function QrLogin() {
           <p className="text-sm text-gray-600">{status}</p>
           {qrcodeUrl && (
             <img
-              src={`http://t.est.im/qr?s=${encodeURIComponent(qrcodeUrl)}`}
+              src={`https://t.est.im/qr?s=${encodeURIComponent(qrcodeUrl)}`}
               alt="扫码登录"
               className="mx-auto h-64 w-64 rounded-lg border"
             />
