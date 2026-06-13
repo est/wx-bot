@@ -11,6 +11,7 @@
 1. 官方包频繁更新，自己写的代码会与官方脱节
 2. 官方包的 API 格式、headers、认证方式可能随时变化
 3. 自己重写容易出错（比如 SendMessageReq 的 `msg` 包装）
+4. 官方包依赖 openclaw，一个巨大臃肿的框架。极力避免这破玩意，做了一个stub代替它
 
 ### 正确做法
 
@@ -24,6 +25,7 @@
 
 ## 技术栈
 
+- Vercel。原来是 Cloudflare Worker ，但是`@tencent-weixin/openclaw-weixin`依赖fs
 - Next.js 16 App Router + TypeScript
 - Turso (libSQL) + Drizzle ORM
 - @simplewebauthn (WebAuthn)

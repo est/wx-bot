@@ -4,10 +4,8 @@ let silkModule: any = null;
 
 async function loadSilk() {
   if (silkModule) return silkModule;
-  // Dynamic import with explicit path to WASM binary
   // @ts-expect-error CDN import
-  const mod = await import("https://esm.sh/silk-wasm@3.7.1?bundle=false");
-  silkModule = mod;
+  silkModule = await import("https://cdn.jsdelivr.net/npm/silk-wasm@3.7.1/lib/index.mjs");
   return silkModule;
 }
 
