@@ -81,7 +81,7 @@ export async function GET(
                 botId,
                 fromUserId: msg.from_user_id || "",
                 toUserId: msg.to_user_id || "",
-                messageId: msg.message_id || null,
+                messageId: msg.message_id ? String(msg.message_id) : null,
                 sessionId: msg.session_id || null,
                 contextToken: msg.context_token || null,
                 direction: "in",

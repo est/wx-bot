@@ -55,7 +55,7 @@ export const messages = sqliteTable("messages", {
     .references(() => bots.id, { onDelete: "cascade" }),
   fromUserId: text("from_user_id").notNull(),
   toUserId: text("to_user_id").notNull(),
-  messageId: integer("message_id"),
+  messageId: text("message_id"),
   sessionId: text("session_id"),
   contextToken: text("context_token"),
   direction: text("direction").notNull(),

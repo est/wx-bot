@@ -102,7 +102,7 @@ async function handlePoll(req: Request) {
             botId: bot.id,
             fromUserId,
             toUserId,
-            messageId: msg.message_id || null,
+            messageId: msg.message_id ? String(msg.message_id) : null,
             sessionId: msg.session_id || null,
             contextToken: msg.context_token || null,
             direction: msg.message_type === 2 ? "out" : "in",

@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
         bot_id TEXT NOT NULL REFERENCES bots(id) ON DELETE CASCADE,
         from_user_id TEXT NOT NULL,
         to_user_id TEXT NOT NULL,
-        message_id INTEGER,
+        message_id TEXT,
         session_id TEXT,
         context_token TEXT,
         direction TEXT NOT NULL,
