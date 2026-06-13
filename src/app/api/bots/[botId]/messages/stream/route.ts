@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { requireSession, requireBotOwner } from "@/lib/auth/guard";
 import { pollUpdates } from "@/lib/weixin/stream";
 import { db } from "@/lib/db";
-import { bots } from "@/lib/db/schema";
+import { bots, messages } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import type { WeixinMessage } from "@/lib/weixin/client";
 
@@ -73,6 +73,24 @@ export async function GET(
       try {
         for await (const msgs of pollUpdates(botId, abortController.signal)) {
           if (closed) break;
+
+          // Store received messages in DB
+          for (const msg of msgs) {
+            if (msg.message_type !== 2) {
+              await db.insert(messages).values({
+                botId,
+                fromUserId: msg.from_user_id || "",
+                toUserId: msg.to_user_id || "",
+                messageId: msg.message_id || null,
+                sessionId: msg.session_id || null,
+                contextToken: msg.context_token || null,
+                direction: "in",
+                messageType: msg.message_type || 1,
+                content: JSON.stringify(msg.item_list || []),
+              }).catch(() => {});
+            }
+          }
+
           const sanitized = msgs.map((msg: WeixinMessage) => ({
             message_id: msg.message_id,
             from_user_id: msg.from_user_id,

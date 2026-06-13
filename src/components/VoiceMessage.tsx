@@ -52,7 +52,7 @@ export default function VoiceMessage({
     };
   }, [src]);
 
-  const duration = playtime ? `${Math.round(playtime / 1000)}秒` : "";
+  const duration = playtime ? `${(playtime / 1000).toFixed(3)}s` : "";
 
   return (
     <div className="space-y-1">
