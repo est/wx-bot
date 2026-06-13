@@ -111,13 +111,16 @@ export default function PasskeyLogin() {
         ) : (
           <div className="space-y-3">
             <input
-              type="text"
-              placeholder="你的名字"
+              type="email"
+              placeholder="邮箱地址"
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={128}
               className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
             />
+            <p className="text-xs text-gray-400">
+              通行密钥绑定此邮箱，邮箱失效将无法找回账号
+            </p>
             <button
               onClick={handleRegister}
               disabled={!name.trim() || !!status}
