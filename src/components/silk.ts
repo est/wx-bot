@@ -1,7 +1,33 @@
-// Load silk-wasm from our public/ wrapper (not bundled, browser loads on demand)
-async function loadSilk() {
-  const mod = await import("/silk.mjs" as string);
-  return mod;
+// silk.ts — loads public/silk.mjs via <script> tag (bypasses bundler)
+
+let silkPromise: Promise<any> | null = null;
+
+function loadSilk(): Promise<any> {
+  if (silkPromise) return silkPromise;
+
+  silkPromise = new Promise((resolve, reject) => {
+    // Check if already loaded
+    if ((window as any).__silk) {
+      resolve((window as any).__silk);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.type = "module";
+    script.src = "/silk.mjs";
+    script.onload = () => {
+      // silk.mjs sets window.__silk
+      if ((window as any).__silk) {
+        resolve((window as any).__silk);
+      } else {
+        reject(new Error("silk.mjs loaded but window.__silk not set"));
+      }
+    };
+    script.onerror = () => reject(new Error("Failed to load silk.mjs"));
+    document.head.appendChild(script);
+  });
+
+  return silkPromise;
 }
 
 function pcmToWav(pcm: Int16Array, sampleRate: number): Blob {
