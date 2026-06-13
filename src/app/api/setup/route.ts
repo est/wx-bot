@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@libsql/client";
 
+const TABLES = ["messages", "passkeys", "bots", "users"];
+
 export async function GET(req: NextRequest) {
   const url = process.env.TURSO_DATABASE_URL;
   const authToken = process.env.TURSO_AUTH_TOKEN;
@@ -10,16 +12,16 @@ export async function GET(req: NextRequest) {
   }
 
   const client = createClient({ url, authToken: authToken || undefined });
-  const purge = req.nextUrl.searchParams.get("purge") === "1";
+  const drop = req.nextUrl.searchParams.get("drop");
 
   try {
-    if (purge) {
-      await client.executeMultiple(`
-        DROP TABLE IF EXISTS messages;
-        DROP TABLE IF EXISTS passkeys;
-        DROP TABLE IF EXISTS bots;
-        DROP TABLE IF EXISTS users;
-      `);
+    if (drop) {
+      const targets = drop === "*" ? TABLES : [drop];
+      for (const table of targets) {
+        if (TABLES.includes(table)) {
+          await client.execute(`DROP TABLE IF EXISTS ${table}`);
+        }
+      }
     }
 
     await client.executeMultiple(`
@@ -73,7 +75,7 @@ export async function GET(req: NextRequest) {
       );
     `);
 
-    return NextResponse.json({ ok: true, purged: purge, message: "Database initialized" });
+    return NextResponse.json({ ok: true, dropd: drop || null, message: "Database initialized" });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   } finally {
