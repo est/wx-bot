@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@libsql/client";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const url = process.env.TURSO_DATABASE_URL;
   const authToken = process.env.TURSO_AUTH_TOKEN;
 
@@ -10,8 +10,18 @@ export async function GET() {
   }
 
   const client = createClient({ url, authToken: authToken || undefined });
+  const purge = req.nextUrl.searchParams.get("purge") === "1";
 
   try {
+    if (purge) {
+      await client.executeMultiple(`
+        DROP TABLE IF EXISTS messages;
+        DROP TABLE IF EXISTS passkeys;
+        DROP TABLE IF EXISTS bots;
+        DROP TABLE IF EXISTS users;
+      `);
+    }
+
     await client.executeMultiple(`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
@@ -37,6 +47,7 @@ export async function GET() {
         user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         name TEXT NOT NULL DEFAULT '未命名',
         account_id TEXT,
+        owner_wx_user_id TEXT,
         token TEXT,
         base_url TEXT DEFAULT 'https://ilinkai.weixin.qq.com',
         cdn_base_url TEXT DEFAULT 'https://novac2c.cdn.weixin.qq.com/c2c',
@@ -61,7 +72,7 @@ export async function GET() {
       );
     `);
 
-    return NextResponse.json({ ok: true, message: "Database initialized" });
+    return NextResponse.json({ ok: true, purged: purge, message: "Database initialized" });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   } finally {
