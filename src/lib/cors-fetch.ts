@@ -5,11 +5,11 @@ export async function fetchWithCorsFallback(url: string): Promise<ArrayBuffer> {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`${res.status}`);
     return res.arrayBuffer();
-  } catch {
-    // CORS or network error, try proxy
+  } catch (err) {
+    console.log(`[cors-fetch] direct failed (${url.slice(0, 60)}...), trying proxy`);
     const proxyUrl = `${CORS_PROXY}${encodeURIComponent(url)}`;
     const res = await fetch(proxyUrl);
-    if (!res.ok) throw new Error(`Proxy failed: ${res.status}`);
+    if (!res.ok) throw new Error(`[cors-fetch] proxy ${res.status}: ${url.slice(0, 60)}`);
     return res.arrayBuffer();
   }
 }

@@ -46,11 +46,13 @@ export default function VoiceMessage({
 
     (async () => {
       try {
-        let rawData = await fetchWithCorsFallback(src);
-        let audioData: Uint8Array;
+        const rawData = await fetchWithCorsFallback(src);
+        console.log("[Voice] fetched:", rawData.byteLength, "bytes");
 
+        let audioData: Uint8Array;
         if (aesKey) {
           audioData = await aesDecrypt(rawData, aesKey);
+          console.log("[Voice] decrypted:", audioData.length, "bytes, header:", audioData.slice(0, 7));
         } else {
           audioData = new Uint8Array(rawData);
         }
@@ -59,15 +61,16 @@ export default function VoiceMessage({
 
         try {
           url = await decodeSilkToWavUrl(audioData);
+          console.log("[Voice] SILK decoded OK");
           if (!cancelled) setWavUrl(url);
         } catch (silkErr) {
-          console.warn("[VoiceMessage] SILK decode failed:", silkErr);
+          console.warn("[Voice] SILK failed, trying raw:", silkErr);
           const blob = new Blob([new Uint8Array(audioData)], { type: "audio/ogg" });
           url = URL.createObjectURL(blob);
           if (!cancelled) setWavUrl(url);
         }
       } catch (err) {
-        console.error("[VoiceMessage] error:", err);
+        console.error("[Voice] failed:", err);
         if (!cancelled) setError(true);
       } finally {
         if (!cancelled) setLoading(false);
