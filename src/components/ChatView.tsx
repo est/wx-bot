@@ -17,7 +17,7 @@ function cdnUrl(botId: string, cdn: CDNMedia | undefined, mime: string): string 
   return null;
 }
 
-function isOutgoing(msg: WeixinMessage): boolean {
+function isOutgoing(msg: WeixinMessage & { direction?: string }): boolean {
   if (msg.direction) return msg.direction === "out";
   return msg.message_type === 2;
 }
