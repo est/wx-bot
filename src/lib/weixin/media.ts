@@ -15,6 +15,7 @@ export async function uploadMedia(
   const rawsize = fileBuffer.length;
   const rawfilemd5 = crypto.createHash("md5").update(fileBuffer).digest("hex");
   const aeskey = crypto.randomBytes(16);
+  const aeskeyHex = aeskey.toString("hex"); // hex for getUploadUrl
   const filesize = aesEcbPaddedSize(rawsize);
   const filekey = crypto.randomBytes(16).toString("hex");
 
@@ -33,7 +34,7 @@ export async function uploadMedia(
       rawfilemd5,
       filesize,
       no_need_thumb: true,
-      aeskey: aeskey.toString("hex"),
+      aeskey: aeskeyHex,
     });
     console.log("[upload] getUploadUrl response:", JSON.stringify(uploadResp));
   } catch (err) {
@@ -56,10 +57,10 @@ export async function uploadMedia(
     aeskey,
   });
 
-  // aes_key in message must be base64
+  // aes_key format: base64 of hex string (matches official package)
   return {
     encrypt_query_param: downloadParam,
-    aes_key: aeskey.toString("base64"),
+    aes_key: Buffer.from(aeskeyHex).toString("base64"),
     encrypt_type: 1,
   };
 }
