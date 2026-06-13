@@ -22,16 +22,25 @@ export async function uploadMedia(
   else if (mimeType.startsWith("video/")) mediaType = UploadMediaType.VIDEO;
   else if (mimeType.startsWith("audio/")) mediaType = UploadMediaType.VOICE;
 
-  const uploadResp = await getMediaUploadUrl(botId, {
-    media_type: mediaType,
-    to_user_id: toUserId,
-    rawsize,
-    rawfilemd5,
-    filesize,
-    aeskey: aeskey.toString("hex"),
-  });
+  let uploadResp: any;
+  try {
+    uploadResp = await getMediaUploadUrl(botId, {
+      media_type: mediaType,
+      to_user_id: toUserId,
+      rawsize,
+      rawfilemd5,
+      filesize,
+      aeskey: aeskey.toString("hex"),
+    });
+    console.log("[upload] getUploadUrl response:", JSON.stringify(uploadResp));
+  } catch (err) {
+    console.error("[upload] getUploadUrl threw:", err);
+    throw new Error(`getUploadUrl failed: ${err}`);
+  }
 
-  console.log("[upload] getUploadUrl response:", JSON.stringify(uploadResp));
+  if (!uploadResp.upload_full_url && !uploadResp.upload_param) {
+    throw new Error(`getUploadUrl returned no URL: ${JSON.stringify(uploadResp)}`);
+  }
 
   // Delegate CDN upload to the official package's function
   const { downloadParam } = await uploadBufferToCdn({
