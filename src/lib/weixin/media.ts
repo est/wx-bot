@@ -1,7 +1,10 @@
 import crypto from "node:crypto";
 import { getMediaUploadUrl } from "./adapter";
 import { UploadMediaType } from "./client";
-import { encryptAesEcb } from "./cdn";
+import { uploadBufferToCdn } from "@tencent-weixin/openclaw-weixin/dist/src/cdn/cdn-upload.js";
+import { aesEcbPaddedSize } from "./cdn";
+
+const DEFAULT_CDN_BASE = "https://novac2c.cdn.weixin.qq.com/c2c";
 
 export async function uploadMedia(
   botId: string,
@@ -12,8 +15,7 @@ export async function uploadMedia(
   const rawsize = fileBuffer.length;
   const rawfilemd5 = crypto.createHash("md5").update(fileBuffer).digest("hex");
   const aeskey = crypto.randomBytes(16);
-  const encrypted = encryptAesEcb(fileBuffer, aeskey);
-  const filesize = encrypted.length;
+  const filesize = aesEcbPaddedSize(rawsize);
 
   let mediaType: number = UploadMediaType.FILE;
   if (mimeType.startsWith("image/")) mediaType = UploadMediaType.IMAGE;
@@ -29,38 +31,18 @@ export async function uploadMedia(
     aeskey: aeskey.toString("hex"),
   });
 
-  // Upload to CDN via POST (matches official openclaw-weixin package)
-  // Read download param from x-encrypted-param response header
-  let downloadParam = uploadResp.upload_param;
+  // Delegate CDN upload to the official package's function
+  const { downloadParam } = await uploadBufferToCdn({
+    buf: fileBuffer,
+    uploadFullUrl: uploadResp.upload_full_url,
+    uploadParam: uploadResp.upload_param,
+    filekey: crypto.randomUUID(),
+    cdnBaseUrl: DEFAULT_CDN_BASE,
+    label: "uploadMedia",
+    aeskey,
+  });
 
-  if (uploadResp.upload_full_url) {
-    let lastErr: unknown;
-    for (let i = 0; i < 3; i++) {
-      try {
-        const res = await fetch(uploadResp.upload_full_url, {
-          method: "POST",
-          headers: { "Content-Type": "application/octet-stream" },
-          body: new Uint8Array(encrypted),
-        });
-        if (res.status >= 400 && res.status < 500) {
-          throw new Error(`CDN client error ${res.status}`);
-        }
-        if (res.status !== 200) {
-          throw new Error(`CDN server error ${res.status}`);
-        }
-        // Official package reads download param from response header
-        const headerParam = res.headers.get("x-encrypted-param");
-        if (headerParam) downloadParam = headerParam;
-        break;
-      } catch (err) {
-        lastErr = err;
-        if (i < 2) await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
-      }
-    }
-    if (lastErr && !downloadParam) throw lastErr;
-  }
-
-  // aes_key in message must be base64 (not hex)
+  // aes_key in message must be base64
   return {
     encrypt_query_param: downloadParam,
     aes_key: aeskey.toString("base64"),
