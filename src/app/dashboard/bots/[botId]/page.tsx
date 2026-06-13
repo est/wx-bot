@@ -40,7 +40,7 @@ export default function BotChatPage({
   }, [botId, router]);
 
   // Load message history from DB
-  useEffect(() => {
+  const loadMessages = () => {
     fetch(`/api/bots/${botId}/messages?limit=100`)
       .then(async (res) => {
         if (!res.ok) return;
@@ -50,6 +50,10 @@ export default function BotChatPage({
         }
       })
       .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadMessages();
   }, [botId]);
 
   // Connect SSE for real-time messages
@@ -61,7 +65,6 @@ export default function BotChatPage({
       try {
         const newMsgs = JSON.parse(event.data) as WeixinMessage[];
         setMessages((prev) => {
-          // Deduplicate by message_id
           const existingIds = new Set(prev.map((m) => m.message_id).filter(Boolean));
           const fresh = newMsgs.filter((m) => !m.message_id || !existingIds.has(m.message_id));
           return [...prev, ...fresh];
@@ -74,7 +77,10 @@ export default function BotChatPage({
     return () => { es.close(); };
   }, [botId]);
 
-  function handleSend() {}
+  function handleSend() {
+    // Reload from DB to show sent message + response
+    setTimeout(loadMessages, 500);
+  }
 
   if (error) {
     return (
