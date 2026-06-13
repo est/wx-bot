@@ -26,7 +26,7 @@ const statusLabels: Record<string, string> = {
 };
 
 function fmtDate(d: Date) {
-  return new Date(d).toLocaleString("zh-CN", {
+  return new Date(d).toLocaleString(undefined, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

@@ -108,7 +108,7 @@ function MessageBubble({
         {msg.item_list?.map((item, j) => renderItem(botId, item, j, onImageClick))}
         {msg.create_time_ms && (
           <p className={`mt-1 text-xs ${out ? "text-blue-100" : "text-gray-400"}`}>
-            {new Date(msg.create_time_ms).toLocaleTimeString("zh-CN")}
+            {new Date(msg.create_time_ms).toLocaleTimeString()}
           </p>
         )}
         <button
