@@ -16,6 +16,7 @@ export async function uploadMedia(
   const rawfilemd5 = crypto.createHash("md5").update(fileBuffer).digest("hex");
   const aeskey = crypto.randomBytes(16);
   const filesize = aesEcbPaddedSize(rawsize);
+  const filekey = crypto.randomBytes(16).toString("hex");
 
   let mediaType: number = UploadMediaType.FILE;
   if (mimeType.startsWith("image/")) mediaType = UploadMediaType.IMAGE;
@@ -25,11 +26,13 @@ export async function uploadMedia(
   let uploadResp: any;
   try {
     uploadResp = await getMediaUploadUrl(botId, {
+      filekey,
       media_type: mediaType,
       to_user_id: toUserId,
       rawsize,
       rawfilemd5,
       filesize,
+      no_need_thumb: true,
       aeskey: aeskey.toString("hex"),
     });
     console.log("[upload] getUploadUrl response:", JSON.stringify(uploadResp));
@@ -47,7 +50,7 @@ export async function uploadMedia(
     buf: fileBuffer,
     uploadFullUrl: uploadResp.upload_full_url,
     uploadParam: uploadResp.upload_param,
-    filekey: crypto.randomUUID(),
+    filekey,
     cdnBaseUrl: DEFAULT_CDN_BASE,
     label: "uploadMedia",
     aeskey,
