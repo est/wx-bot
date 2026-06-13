@@ -48,7 +48,15 @@ function renderItem(botId: string, item: MessageItem, index: number, onImageClic
     const cdn = item.voice_item?.media;
     const url = cdnUrl(botId, cdn, "audio/silk");
     if (url) {
-      return <VoiceMessage key={index} src={url} className="max-w-full" />;
+      return (
+        <VoiceMessage
+          key={index}
+          src={url}
+          playtime={item.voice_item?.playtime}
+          text={item.voice_item?.text}
+          className="max-w-full"
+        />
+      );
     }
     return <p key={index} className="text-sm text-gray-400">[语音]</p>;
   }

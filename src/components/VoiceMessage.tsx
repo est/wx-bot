@@ -5,9 +5,13 @@ import { decodeSilkToWavUrl } from "./silk";
 
 export default function VoiceMessage({
   src,
+  playtime,
+  text,
   className = "",
 }: {
   src: string;
+  playtime?: number;
+  text?: string;
   className?: string;
 }) {
   const [wavUrl, setWavUrl] = useState<string | null>(null);
@@ -21,20 +25,15 @@ export default function VoiceMessage({
     (async () => {
       try {
         const res = await fetch(src);
-        if (!res.ok) {
-          console.error("[VoiceMessage] fetch failed:", res.status, src);
-          throw new Error(`fetch failed: ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
         const buf = await res.arrayBuffer();
         if (cancelled) return;
 
-        // Try SILK decode, fall back to direct play if it fails
         try {
           url = await decodeSilkToWavUrl(buf);
           if (!cancelled) setWavUrl(url);
         } catch (silkErr) {
-          console.warn("[VoiceMessage] SILK decode failed, trying raw audio:", silkErr);
-          // Fallback: try playing the raw data as-is
+          console.warn("[VoiceMessage] SILK decode failed:", silkErr);
           const blob = new Blob([buf], { type: "audio/ogg" });
           url = URL.createObjectURL(blob);
           if (!cancelled) setWavUrl(url);
@@ -53,8 +52,21 @@ export default function VoiceMessage({
     };
   }, [src]);
 
-  if (loading) return <span className="text-xs text-gray-400">加载语音...</span>;
-  if (error || !wavUrl) return <span className="text-xs text-gray-400">[语音]</span>;
+  const duration = playtime ? `${Math.round(playtime / 1000)}秒` : "";
 
-  return <audio controls src={wavUrl} className={className} />;
+  return (
+    <div className="space-y-1">
+      {loading && <span className="text-xs text-gray-400">加载语音...</span>}
+      {!loading && error && <span className="text-xs text-gray-400">[语音]</span>}
+      {!loading && !error && wavUrl && (
+        <audio controls src={wavUrl} className={className} />
+      )}
+      <div className="flex items-center gap-2 text-xs text-gray-500">
+        {duration && <span>{duration}</span>}
+      </div>
+      {text && (
+        <p className="text-xs text-gray-600 italic">"{text}"</p>
+      )}
+    </div>
+  );
 }
