@@ -35,10 +35,11 @@ export async function POST(
     const allowedTypes = [
       "image/jpeg", "image/png", "image/gif", "image/webp",
       "video/mp4", "video/quicktime",
-      "audio/ogg", "audio/mpeg", "audio/wav",
+      "audio/ogg", "audio/mpeg", "audio/wav", "audio/silk", "audio/webm",
       "application/pdf", "application/zip",
       "application/msword",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/octet-stream",
     ];
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json({ error: "Unsupported file type" }, { status: 400 });

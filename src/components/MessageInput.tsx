@@ -15,23 +15,32 @@ export default function MessageInput({
   const [preview, setPreview] = useState<{ url: string; name: string; type: string } | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [recording, setRecording] = useState(false);
+  const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
+  function showError(msg: string) {
+    setError(msg);
+    setTimeout(() => setError(""), 5000);
+  }
+
   async function handleSendText() {
     if (!text.trim() || sending) return;
     setSending(true);
+    setError("");
     try {
-      await fetch(`/api/bots/${botId}/messages`, {
+      const res = await fetch(`/api/bots/${botId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       setText("");
       onSend();
     } catch (err) {
-      console.error("Send failed:", err);
+      showError(`发送失败: ${err}`);
     } finally {
       setSending(false);
     }
@@ -49,6 +58,8 @@ export default function MessageInput({
   async function handleUploadAndSend() {
     if (!pendingFile || sending) return;
     setSending(true);
+    setError("");
+
     try {
       const formData = new FormData();
       formData.append("file", pendingFile);
@@ -57,22 +68,24 @@ export default function MessageInput({
         body: formData,
       });
       const uploadData = await uploadResp.json();
-      if (!uploadResp.ok) throw new Error(uploadData.error);
+      if (!uploadResp.ok) throw new Error(uploadData.error || `上传失败 HTTP ${uploadResp.status}`);
 
       let mediaType = 4;
       if (pendingFile.type.startsWith("image/")) mediaType = 2;
       else if (pendingFile.type.startsWith("video/")) mediaType = 5;
 
-      await fetch(`/api/bots/${botId}/media/send`, {
+      const sendResp = await fetch(`/api/bots/${botId}/media/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mediaRef: uploadData.mediaRef, mediaType }),
       });
+      const sendData = await sendResp.json();
+      if (!sendResp.ok) throw new Error(sendData.error || `发送失败 HTTP ${sendResp.status}`);
 
       clearPreview();
       onSend();
     } catch (err) {
-      console.error("Upload/send failed:", err);
+      showError(`媒体发送失败: ${err}`);
     } finally {
       setSending(false);
     }
@@ -85,6 +98,7 @@ export default function MessageInput({
   }
 
   async function startRecording() {
+    setError("");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
@@ -101,7 +115,6 @@ export default function MessageInput({
         console.log("[Recording] captured", arrayBuffer.byteLength, "bytes");
 
         try {
-          // Decode to raw PCM via AudioContext
           const audioCtx = new AudioContext({ sampleRate: 24000 });
           const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
           const pcmFloat = audioBuffer.getChannelData(0);
@@ -112,18 +125,15 @@ export default function MessageInput({
           }
           console.log("[Recording] PCM samples:", pcmInt16.length);
 
-          // Encode to SILK (loads from CDN on first call)
           let silkData: Uint8Array;
           try {
             silkData = await encodePcmToSilk(pcmInt16.buffer, 24000);
           } catch (silkErr) {
-            console.error("[Recording] SILK encode failed, sending raw audio:", silkErr);
-            // Fallback: send as raw audio
+            console.warn("[Recording] SILK encode failed, sending raw:", silkErr);
             silkData = new Uint8Array(pcmInt16.buffer);
           }
           console.log("[Recording] encoded:", silkData.length, "bytes");
 
-          // Upload and send
           setSending(true);
           const formData = new FormData();
           formData.append("file", new Blob([new Uint8Array(silkData)], { type: "audio/silk" }), "voice.silk");
@@ -132,8 +142,8 @@ export default function MessageInput({
             body: formData,
           });
           const uploadData = await uploadResp.json();
-          console.log("[Recording] upload response:", uploadResp.status, uploadData);
-          if (!uploadResp.ok) throw new Error(uploadData.error);
+          console.log("[Recording] upload:", uploadResp.status, uploadData);
+          if (!uploadResp.ok) throw new Error(uploadData.error || `上传失败 HTTP ${uploadResp.status}`);
 
           const sendResp = await fetch(`/api/bots/${botId}/media/send`, {
             method: "POST",
@@ -141,11 +151,11 @@ export default function MessageInput({
             body: JSON.stringify({ mediaRef: uploadData.mediaRef, mediaType: 3 }),
           });
           const sendData = await sendResp.json();
-          console.log("[Recording] send response:", sendResp.status, sendData);
-          if (!sendResp.ok) throw new Error(sendData.error);
+          console.log("[Recording] send:", sendResp.status, sendData);
+          if (!sendResp.ok) throw new Error(sendData.error || `发送失败 HTTP ${sendResp.status}`);
           onSend();
         } catch (err) {
-          console.error("Voice send failed:", err);
+          showError(`语音发送失败: ${err}`);
         } finally {
           setSending(false);
         }
@@ -155,7 +165,7 @@ export default function MessageInput({
       mediaRecorderRef.current = recorder;
       setRecording(true);
     } catch (err) {
-      console.error("Microphone access denied:", err);
+      showError(`麦克风访问失败: ${err}`);
     }
   }
 
@@ -166,6 +176,12 @@ export default function MessageInput({
 
   return (
     <div className="border-t bg-white p-3 space-y-2">
+      {error && (
+        <div className="rounded bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
+          {error}
+        </div>
+      )}
+
       {preview && (
         <div className="flex items-center gap-3 rounded-lg border p-2">
           {preview.type.startsWith("image/") && (
