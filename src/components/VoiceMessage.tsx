@@ -4,7 +4,10 @@ import { useState, useEffect } from "react";
 import { decodeSilkToWavUrl } from "./silk";
 import { fetchWithCorsFallback } from "@/lib/cors-fetch";
 
-async function aesDecrypt(data: ArrayBuffer, keyBase64: string): Promise<ArrayBuffer> {
+// AES-128-ECB using aes-js (Web Crypto doesn't support ECB mode)
+async function aesDecrypt(data: ArrayBuffer, keyBase64: string): Promise<Uint8Array> {
+  // @ts-expect-error CDN import
+  const aesjs = await import("https://cdn.jsdelivr.net/npm/aes-js@3.1.2/index.js");
   const keyBytes = new Uint8Array(atob(keyBase64).split("").map(c => c.charCodeAt(0)));
   let key: Uint8Array;
   if (keyBytes.length === 16) {
@@ -16,8 +19,8 @@ async function aesDecrypt(data: ArrayBuffer, keyBase64: string): Promise<ArrayBu
     throw new Error(`Invalid key length: ${keyBytes.length}`);
   }
 
-  const cryptoKey = await crypto.subtle.importKey("raw", new Uint8Array(key), { name: "AES-ECB" }, false, ["decrypt"]);
-  return crypto.subtle.decrypt({ name: "AES-ECB" }, cryptoKey, data);
+  const aesEcb = new aesjs.ModeOfOperation.ecb(key);
+  return aesEcb.decrypt(new Uint8Array(data));
 }
 
 export default function VoiceMessage({
@@ -43,20 +46,23 @@ export default function VoiceMessage({
 
     (async () => {
       try {
-        let buf = await fetchWithCorsFallback(src);
+        let rawData = await fetchWithCorsFallback(src);
+        let audioData: Uint8Array;
 
         if (aesKey) {
-          buf = await aesDecrypt(buf, aesKey);
+          audioData = await aesDecrypt(rawData, aesKey);
+        } else {
+          audioData = new Uint8Array(rawData);
         }
 
         if (cancelled) return;
 
         try {
-          url = await decodeSilkToWavUrl(new Uint8Array(buf));
+          url = await decodeSilkToWavUrl(audioData);
           if (!cancelled) setWavUrl(url);
         } catch (silkErr) {
           console.warn("[VoiceMessage] SILK decode failed:", silkErr);
-          const blob = new Blob([buf], { type: "audio/ogg" });
+          const blob = new Blob([new Uint8Array(audioData)], { type: "audio/ogg" });
           url = URL.createObjectURL(blob);
           if (!cancelled) setWavUrl(url);
         }

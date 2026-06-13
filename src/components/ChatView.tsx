@@ -6,6 +6,8 @@ import VoiceMessage from "./VoiceMessage";
 import { fetchWithCorsFallback } from "@/lib/cors-fetch";
 
 async function decryptToBlobUrl(data: ArrayBuffer, keyBase64: string): Promise<string> {
+  // @ts-expect-error CDN import
+  const aesjs = await import("https://cdn.jsdelivr.net/npm/aes-js@3.1.2/index.js");
   const keyBytes = new Uint8Array(atob(keyBase64).split("").map(c => c.charCodeAt(0)));
   let key: Uint8Array;
   if (keyBytes.length === 16) {
@@ -16,8 +18,8 @@ async function decryptToBlobUrl(data: ArrayBuffer, keyBase64: string): Promise<s
   } else {
     throw new Error(`Invalid key length: ${keyBytes.length}`);
   }
-  const cryptoKey = await crypto.subtle.importKey("raw", new Uint8Array(key), { name: "AES-ECB" }, false, ["decrypt"]);
-  const decrypted = await crypto.subtle.decrypt({ name: "AES-ECB" }, cryptoKey, data);
+  const aesEcb = new aesjs.ModeOfOperation.ecb(key);
+  const decrypted = aesEcb.decrypt(new Uint8Array(data));
   return URL.createObjectURL(new Blob([decrypted]));
 }
 
