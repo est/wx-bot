@@ -114,7 +114,7 @@ function MessageBubble({
             out ? "bg-blue-400 text-white" : "bg-gray-200 text-gray-600"
           }`}
         >
-          +
+          {showJson ? "−" : "+"}
         </button>
         {showJson && (
           <pre className={`mt-2 p-2 rounded text-xs overflow-auto max-h-60 ${
