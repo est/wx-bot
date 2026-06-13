@@ -88,7 +88,7 @@ export default function DashboardPage() {
       {!loading && !error && bots.length > 0 && (
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           {bots.map((bot) => (
-            <BotCard key={bot.id} bot={bot} />
+            <BotCard key={bot.id} bot={bot} onDelete={loadBots} />
           ))}
         </div>
       )}

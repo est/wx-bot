@@ -25,8 +25,17 @@ const statusLabels: Record<string, string> = {
   error: "异常",
 };
 
-export default function BotCard({ bot }: { bot: Bot }) {
+export default function BotCard({ bot, onDelete }: { bot: Bot; onDelete?: () => void }) {
   const router = useRouter();
+
+  async function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirm("确定删除？")) return;
+    await fetch(`/api/bots/${bot.id}`, { method: "DELETE" });
+    onDelete?.();
+  }
+
+  const dateStr = new Date(bot.createdAt).toISOString().slice(0, 10);
 
   return (
     <div
@@ -37,17 +46,24 @@ export default function BotCard({ bot }: { bot: Bot }) {
         <h3 className="text-lg font-semibold text-gray-900">
           {bot.accountId || bot.id}
         </h3>
-        <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColors[bot.status] || "bg-gray-100 text-gray-600"}`}
-        >
-          {statusLabels[bot.status] || bot.status}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColors[bot.status] || "bg-gray-100 text-gray-600"}`}
+          >
+            {statusLabels[bot.status] || bot.status}
+          </span>
+          <button
+            onClick={handleDelete}
+            className="text-xs text-gray-400 hover:text-red-500"
+            title="删除"
+          >
+            ✕
+          </button>
+        </div>
       </div>
       <div className="mt-2 text-sm text-gray-500">
         {bot.ownerWxUserId && <p>微信用户: {bot.ownerWxUserId}</p>}
-        <p className="mt-1">
-          创建于 {new Date(bot.createdAt).toLocaleDateString("zh-CN")}
-        </p>
+        <p className="mt-1">创建于 {dateStr}</p>
       </div>
     </div>
   );
