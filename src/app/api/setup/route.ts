@@ -68,6 +68,7 @@ export async function GET(req: NextRequest) {
         direction TEXT NOT NULL,
         message_type INTEGER NOT NULL,
         content TEXT NOT NULL,
+        response_body TEXT,
         created_at INTEGER NOT NULL
       );
     `);
