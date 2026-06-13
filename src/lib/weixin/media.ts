@@ -31,6 +31,8 @@ export async function uploadMedia(
     aeskey: aeskey.toString("hex"),
   });
 
+  console.log("[upload] getUploadUrl response:", JSON.stringify(uploadResp));
+
   // Delegate CDN upload to the official package's function
   const { downloadParam } = await uploadBufferToCdn({
     buf: fileBuffer,
