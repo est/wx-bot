@@ -4,54 +4,100 @@ import { useState } from "react";
 import type { WeixinMessage, MessageItem, CDNMedia } from "@/lib/weixin/types";
 import VoiceMessage from "./VoiceMessage";
 
-function cdnUrl(botId: string, cdn: CDNMedia | undefined, mime: string): string | null {
-  if (!cdn) return null;
-  if (cdn.full_url && !cdn.aes_key) return cdn.full_url;
-  if (cdn.encrypt_query_param || cdn.full_url) {
-    const p = new URLSearchParams({ mime });
-    if (cdn.encrypt_query_param) p.set("eqp", cdn.encrypt_query_param);
-    if (cdn.aes_key) p.set("ak", cdn.aes_key);
-    if (cdn.full_url) p.set("fu", cdn.full_url);
-    return `/api/bots/${botId}/media/proxy?${p}`;
+// AES-128-ECB decrypt for images in browser
+async function decryptImageUrl(cdn: CDNMedia): Promise<string | null> {
+  if (!cdn.full_url && !cdn.encrypt_query_param) return null;
+  if (cdn.full_url && !cdn.aes_key) return cdn.full_url; // plain
+
+  const url = cdn.full_url || `https://novac2c.cdn.weixin.qq.com/c2c/download?encrypted_query_param=${encodeURIComponent(cdn.encrypt_query_param!)}`;
+  const keyB64 = cdn.aes_key;
+  if (!keyB64) return url; // no key, try as-is
+
+  try {
+    const res = await fetch(url);
+    const buf = await res.arrayBuffer();
+    const keyBytes = new Uint8Array(atob(keyB64).split("").map(c => c.charCodeAt(0)));
+    let key: Uint8Array;
+    if (keyBytes.length === 16) {
+      key = keyBytes;
+    } else if (keyBytes.length === 32) {
+      const hex = new TextDecoder().decode(keyBytes);
+      key = new Uint8Array(hex.match(/.{2}/g)!.map(b => parseInt(b, 16)));
+    } else {
+      return url;
+    }
+    const cryptoKey = await crypto.subtle.importKey("raw", new Uint8Array(key), { name: "AES-ECB" }, false, ["decrypt"]);
+    const decrypted = await crypto.subtle.decrypt({ name: "AES-ECB" }, cryptoKey, buf);
+    return URL.createObjectURL(new Blob([decrypted]));
+  } catch (err) {
+    console.error("[decryptImageUrl] failed:", err);
+    return url;
   }
-  return null;
 }
 
-function isOutgoing(msg: WeixinMessage & { direction?: string }): boolean {
-  if (msg.direction) return msg.direction === "out";
-  return msg.message_type === 2;
+function getVoiceSrc(cdn: CDNMedia | undefined): { url: string; aesKey?: string } | null {
+  if (!cdn) return null;
+  const url = cdn.full_url || (cdn.encrypt_query_param
+    ? `https://novac2c.cdn.weixin.qq.com/c2c/download?encrypted_query_param=${encodeURIComponent(cdn.encrypt_query_param)}`
+    : null);
+  if (!url) return null;
+  return { url, aesKey: cdn.aes_key };
 }
 
-function renderItem(botId: string, item: MessageItem, index: number, onImageClick: (url: string) => void) {
+function ImageMessage({ cdn }: { cdn: CDNMedia }) {
+  const [src, setSrc] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+
+  if (!src && loading) {
+    decryptImageUrl(cdn).then(url => {
+      setSrc(url);
+      setLoading(false);
+    });
+  }
+
+  if (loading) return <span className="text-xs text-gray-400">加载图片...</span>;
+  if (!src) return <span className="text-xs text-gray-400">[图片]</span>;
+
+  return (
+    <>
+      <img
+        src={src}
+        alt="图片"
+        className="max-h-60 max-w-full rounded-lg cursor-pointer hover:opacity-90"
+        onClick={() => setExpanded(true)}
+      />
+      {expanded && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+          onClick={() => setExpanded(false)}
+        >
+          <img src={src} alt="放大" className="max-h-[90vh] max-w-[90vw] rounded-lg" />
+        </div>
+      )}
+    </>
+  );
+}
+
+function renderItem(botId: string, item: MessageItem, index: number) {
   if (item.type === 1 && item.text_item?.text) {
     return <p key={index} className="whitespace-pre-wrap">{item.text_item.text}</p>;
   }
 
   if (item.type === 2) {
     const cdn = item.image_item?.media;
-    const url = cdnUrl(botId, cdn, "image/jpeg");
-    if (url) {
-      return (
-        <img
-          key={index}
-          src={url}
-          alt="图片"
-          className="max-h-60 max-w-full rounded-lg cursor-pointer hover:opacity-90"
-          onClick={() => onImageClick(url)}
-        />
-      );
-    }
+    if (cdn) return <ImageMessage key={index} cdn={cdn} />;
     return <p key={index} className="text-sm text-gray-400">[图片]</p>;
   }
 
   if (item.type === 3) {
-    const cdn = item.voice_item?.media;
-    const url = cdnUrl(botId, cdn, "audio/silk");
-    if (url) {
+    const voice = getVoiceSrc(item.voice_item?.media);
+    if (voice) {
       return (
         <VoiceMessage
           key={index}
-          src={url}
+          src={voice.url}
+          aesKey={voice.aesKey}
           playtime={item.voice_item?.playtime}
           text={item.voice_item?.text}
           className="max-w-full"
@@ -64,7 +110,7 @@ function renderItem(botId: string, item: MessageItem, index: number, onImageClic
   if (item.type === 4) {
     const cdn = item.file_item?.media;
     const name = item.file_item?.file_name || "文件";
-    const url = cdnUrl(botId, cdn, "application/octet-stream");
+    const url = cdn?.full_url;
     if (url) {
       return (
         <a key={index} href={url} target="_blank" rel="noopener noreferrer"
@@ -76,7 +122,7 @@ function renderItem(botId: string, item: MessageItem, index: number, onImageClic
 
   if (item.type === 5) {
     const cdn = item.video_item?.media;
-    const url = cdnUrl(botId, cdn, "video/mp4");
+    const url = cdn?.full_url;
     if (url) {
       return <video key={index} controls src={url} className="max-h-60 max-w-full rounded-lg" />;
     }
@@ -89,14 +135,12 @@ function renderItem(botId: string, item: MessageItem, index: number, onImageClic
 function MessageBubble({
   msg,
   botId,
-  onImageClick,
 }: {
   msg: WeixinMessage & { direction?: string; response_body?: string };
   botId: string;
-  onImageClick: (url: string) => void;
 }) {
   const [showJson, setShowJson] = useState(false);
-  const out = isOutgoing(msg);
+  const out = msg.direction === "out" || msg.message_type === 2;
 
   return (
     <div className={`flex ${out ? "justify-end" : "justify-start"}`}>
@@ -105,7 +149,7 @@ function MessageBubble({
           out ? "bg-blue-500 text-white" : "bg-white border"
         }`}
       >
-        {msg.item_list?.map((item, j) => renderItem(botId, item, j, onImageClick))}
+        {msg.item_list?.map((item, j) => renderItem(botId, item, j))}
         {msg.create_time_ms && (
           <p className={`mt-1 text-xs ${out ? "text-blue-100" : "text-gray-400"}`}>
             {new Date(msg.create_time_ms).toLocaleTimeString()}
@@ -138,36 +182,14 @@ export default function ChatView({
   messages: WeixinMessage[];
   botId: string;
 }) {
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-
   return (
-    <>
-      <div className="flex-1 overflow-y-auto space-y-2 p-4">
-        {messages.length === 0 && (
-          <p className="py-12 text-center text-gray-400">暂无消息</p>
-        )}
-        {messages.map((msg, i) => (
-          <MessageBubble
-            key={msg.message_id || i}
-            msg={msg}
-            botId={botId}
-            onImageClick={setLightboxUrl}
-          />
-        ))}
-      </div>
-
-      {lightboxUrl && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
-          onClick={() => setLightboxUrl(null)}
-        >
-          <img
-            src={lightboxUrl}
-            alt="放大"
-            className="max-h-[90vh] max-w-[90vw] rounded-lg"
-          />
-        </div>
+    <div className="flex-1 overflow-y-auto space-y-2 p-4">
+      {messages.length === 0 && (
+        <p className="py-12 text-center text-gray-400">暂无消息</p>
       )}
-    </>
+      {messages.map((msg, i) => (
+        <MessageBubble key={msg.message_id || i} msg={msg as any} botId={botId} />
+      ))}
+    </div>
   );
 }

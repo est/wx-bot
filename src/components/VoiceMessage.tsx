@@ -3,13 +3,32 @@
 import { useState, useEffect } from "react";
 import { decodeSilkToWavUrl } from "./silk";
 
+// AES-128-ECB decrypt in browser
+async function aesDecrypt(data: ArrayBuffer, keyBase64: string): Promise<ArrayBuffer> {
+  const keyBytes = new Uint8Array(atob(keyBase64).split("").map(c => c.charCodeAt(0)));
+  let key: Uint8Array;
+  if (keyBytes.length === 16) {
+    key = keyBytes;
+  } else if (keyBytes.length === 32) {
+    const hex = new TextDecoder().decode(keyBytes);
+    key = new Uint8Array(hex.match(/.{2}/g)!.map(b => parseInt(b, 16)));
+  } else {
+    throw new Error(`Invalid key length: ${keyBytes.length}`);
+  }
+
+  const cryptoKey = await crypto.subtle.importKey("raw", new Uint8Array(key), { name: "AES-ECB" }, false, ["decrypt"]);
+  return crypto.subtle.decrypt({ name: "AES-ECB" }, cryptoKey, data);
+}
+
 export default function VoiceMessage({
   src,
+  aesKey,
   playtime,
   text,
   className = "",
 }: {
   src: string;
+  aesKey?: string;
   playtime?: number;
   text?: string;
   className?: string;
@@ -26,11 +45,18 @@ export default function VoiceMessage({
       try {
         const res = await fetch(src);
         if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
-        const buf = await res.arrayBuffer();
+        let buf = await res.arrayBuffer();
+
+        // Decrypt if key provided
+        if (aesKey) {
+          buf = await aesDecrypt(buf, aesKey);
+        }
+
         if (cancelled) return;
 
+        // Decode SILK to WAV
         try {
-          url = await decodeSilkToWavUrl(buf);
+          url = await decodeSilkToWavUrl(new Uint8Array(buf));
           if (!cancelled) setWavUrl(url);
         } catch (silkErr) {
           console.warn("[VoiceMessage] SILK decode failed:", silkErr);
@@ -50,7 +76,7 @@ export default function VoiceMessage({
       cancelled = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [src]);
+  }, [src, aesKey]);
 
   const duration = playtime ? `${(playtime / 1000).toFixed(3)}s` : "";
 
@@ -61,12 +87,8 @@ export default function VoiceMessage({
       {!loading && !error && wavUrl && (
         <audio controls src={wavUrl} className={className} />
       )}
-      <div className="flex items-center gap-2 text-xs text-gray-500">
-        {duration && <span>{duration}</span>}
-      </div>
-      {text && (
-        <p className="text-xs text-gray-600 italic">"{text}"</p>
-      )}
+      {duration && <div className="text-xs text-gray-500">{duration}</div>}
+      {text && <p className="text-xs text-gray-600 italic">"{text}"</p>}
     </div>
   );
 }
