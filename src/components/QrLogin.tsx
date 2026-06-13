@@ -9,30 +9,34 @@ export default function QrLogin() {
   const [sessionId, setSessionId] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
-  const [step, setStep] = useState<"start" | "qr" | "done">("start");
+  const [done, setDone] = useState(false);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const router = useRouter();
 
-  async function startLogin() {
-    setError("");
-    try {
-      const resp = await fetch("/api/bots", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error);
+  useEffect(() => {
+    // Auto-start login on mount
+    (async () => {
+      try {
+        const resp = await fetch("/api/bots", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error);
 
-      setBotId(data.botId);
-      setSessionId(data.sessionId);
-      setQrcodeUrl(data.qrcodeUrl);
-      setStatus("等待扫码...");
-      setStep("qr");
-    } catch (err) {
-      setError(String(err));
-    }
-  }
+        setBotId(data.botId);
+        setSessionId(data.sessionId);
+        setQrcodeUrl(data.qrcodeUrl);
+        setStatus("等待扫码...");
+
+        // Open QR in popup
+        window.open(data.qrcodeUrl, "wx-qr", "width=400,height=500");
+      } catch (err) {
+        setError(String(err));
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (!sessionId || !botId) return;
@@ -46,7 +50,7 @@ export default function QrLogin() {
 
         if (data.status === "confirmed") {
           setStatus("登录成功！");
-          setStep("done");
+          setDone(true);
           if (pollingRef.current) clearInterval(pollingRef.current);
           setTimeout(() => router.push(`/dashboard/bots/${botId}`), 1000);
         } else if (data.status === "expired") {
@@ -72,44 +76,40 @@ export default function QrLogin() {
       {error && (
         <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
           {error}
-        </div>
-      )}
-
-      {step === "start" && (
-        <div className="mt-6 space-y-4">
-          <button
-            onClick={startLogin}
-            className="w-full rounded-lg bg-blue-600 px-4 py-3 text-white font-medium hover:bg-blue-700"
-          >
-            生成登录二维码
-          </button>
           <button
             onClick={() => router.push("/dashboard")}
-            className="w-full text-center text-sm text-gray-500 hover:text-gray-700"
+            className="ml-2 underline"
           >
             返回
           </button>
         </div>
       )}
 
-      {step === "qr" && (
+      {!error && !done && (
         <div className="mt-6 space-y-4 text-center">
           <p className="text-sm text-gray-600">{status}</p>
           {qrcodeUrl && (
-            <iframe
-              src={qrcodeUrl}
-              className="mx-auto h-80 w-80 rounded-lg border"
-              sandbox="allow-scripts allow-same-origin"
-            />
+            <div>
+              <p className="text-xs text-gray-400 mb-2">
+                二维码已在新窗口打开，请用微信扫码
+              </p>
+              <a
+                href={qrcodeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-blue-600 hover:underline"
+              >
+                点击重新打开二维码
+              </a>
+            </div>
           )}
-          <p className="text-xs text-gray-400">
-            请使用手机微信扫描二维码
-          </p>
+          {!qrcodeUrl && (
+            <p className="text-sm text-gray-400">正在生成二维码...</p>
+          )}
           <button
             onClick={() => {
-              setStep("start");
-              setError("");
               if (pollingRef.current) clearInterval(pollingRef.current);
+              router.push("/dashboard");
             }}
             className="text-sm text-gray-500 hover:text-red-600"
           >
@@ -118,7 +118,7 @@ export default function QrLogin() {
         </div>
       )}
 
-      {step === "done" && (
+      {done && (
         <div className="mt-6 text-center">
           <p className="text-lg font-medium text-green-600">登录成功！</p>
           <p className="mt-2 text-sm text-gray-500">正在跳转...</p>
