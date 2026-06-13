@@ -2,36 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { decodeSilkToWavUrl } from "./silk";
-import { fetchWithCorsFallback } from "@/lib/cors-fetch";
-
-// AES-128-ECB using aes-js (Web Crypto doesn't support ECB mode)
-async function aesDecrypt(data: ArrayBuffer, keyBase64: string): Promise<Uint8Array> {
-  // @ts-expect-error CDN import
-  const aesjs = await import("https://cdn.jsdelivr.net/npm/aes-js@3.1.2/index.js");
-  const keyBytes = new Uint8Array(atob(keyBase64).split("").map(c => c.charCodeAt(0)));
-  let key: Uint8Array;
-  if (keyBytes.length === 16) {
-    key = keyBytes;
-  } else if (keyBytes.length === 32) {
-    const hex = new TextDecoder().decode(keyBytes);
-    key = new Uint8Array(hex.match(/.{2}/g)!.map(b => parseInt(b, 16)));
-  } else {
-    throw new Error(`Invalid key length: ${keyBytes.length}`);
-  }
-
-  const aesEcb = new aesjs.ModeOfOperation.ecb(key);
-  return aesEcb.decrypt(new Uint8Array(data));
-}
 
 export default function VoiceMessage({
   src,
-  aesKey,
   playtime,
   text,
   className = "",
 }: {
   src: string;
-  aesKey?: string;
   playtime?: number;
   text?: string;
   className?: string;
@@ -46,26 +24,17 @@ export default function VoiceMessage({
 
     (async () => {
       try {
-        const rawData = await fetchWithCorsFallback(src);
-        console.log("[Voice] fetched:", rawData.byteLength, "bytes");
-
-        let audioData: Uint8Array;
-        if (aesKey) {
-          audioData = await aesDecrypt(rawData, aesKey);
-          console.log("[Voice] decrypted:", audioData.length, "bytes, header:", audioData.slice(0, 7));
-        } else {
-          audioData = new Uint8Array(rawData);
-        }
-
+        const res = await fetch(src);
+        if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
+        const buf = await res.arrayBuffer();
         if (cancelled) return;
 
         try {
-          url = await decodeSilkToWavUrl(audioData);
-          console.log("[Voice] SILK decoded OK");
+          url = await decodeSilkToWavUrl(new Uint8Array(buf));
           if (!cancelled) setWavUrl(url);
         } catch (silkErr) {
           console.warn("[Voice] SILK failed, trying raw:", silkErr);
-          const blob = new Blob([new Uint8Array(audioData)], { type: "audio/ogg" });
+          const blob = new Blob([buf], { type: "audio/ogg" });
           url = URL.createObjectURL(blob);
           if (!cancelled) setWavUrl(url);
         }
@@ -81,7 +50,7 @@ export default function VoiceMessage({
       cancelled = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [src, aesKey]);
+  }, [src]);
 
   const duration = playtime ? `${(playtime / 1000).toFixed(3)}s` : "";
 
