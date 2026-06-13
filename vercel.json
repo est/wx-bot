@@ -3,10 +3,6 @@
     {
       "path": "/api/cron/trigger-deploy",
       "schedule": "1 2 3 * *"
-    },
-    {
-      "path": "/api/cron/poll",
-      "schedule": "0 */6 * * *"
     }
   ]
 }
