@@ -56,7 +56,7 @@ turso db tokens create wx-bot  # 保存为 TURSO_AUTH_TOKEN
 
 ```bash
 cp .env.example .env
-# 填写 TURSO_DATABASE_URL, TURSO_AUTH_TOKEN, SESSION_SECRET
+# 填写 TURSO_DATABASE_URL, TURSO_AUTH_TOKEN
 npm install
 npm run db:push    # 初始化数据库表
 npm run dev        # 启动 → http://localhost:3000
