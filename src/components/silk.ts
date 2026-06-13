@@ -4,15 +4,11 @@ let silkModule: any = null;
 
 async function loadSilk() {
   if (silkModule) return silkModule;
-  console.log("[silk] loading from CDN...");
-  try {
-  // @ts-expect-error CDN import
-  silkModule = await import("https://unpkg.com/silk-wasm@3.7.1/lib/index.mjs");
-    console.log("[silk] loaded, exports:", Object.keys(silkModule));
-  } catch (err) {
-    console.error("[silk] load failed:", err);
-    throw err;
-  }
+  // Use dynamic import via Function constructor to bypass Next.js bundler static analysis.
+  // The bundler intercepts import() and tries to resolve URLs at build time, causing
+  // "e.x is not a function" error. This trick prevents that.
+  const dynamicImport = new Function("url", "return import(url)");
+  silkModule = await dynamicImport("https://unpkg.com/silk-wasm@3.7.1/lib/index.mjs");
   return silkModule;
 }
 
