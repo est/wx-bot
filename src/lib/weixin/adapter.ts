@@ -1,8 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { bots } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import * as WeixinApi from "./client";
-import type { SendMessageReq, GetUploadUrlReq } from "./client";
+import type { MessageItem, GetUploadUrlReq } from "./client";
 
 async function getBotCredentials(botId: string) {
   const bot = await db.query.bots.findFirst({ where: eq(bots.id, botId) });
@@ -31,12 +32,21 @@ export async function sendTextMessage(
   }
 ) {
   const { token, baseUrl } = await getBotCredentials(botId);
-  const body: SendMessageReq = {
-    to_user_id: params.toUserId,
-    context_token: params.contextToken,
-    item_list: [{ type: 1, text_item: { text: params.text } }],
-  };
-  return WeixinApi.sendMessage({ baseUrl, token, body });
+  await WeixinApi.sendMessage({
+    baseUrl,
+    token,
+    body: {
+      msg: {
+        from_user_id: "",
+        to_user_id: params.toUserId,
+        client_id: randomUUID(),
+        message_type: 2, // BOT
+        message_state: 2, // FINISH
+        item_list: [{ type: 1, text_item: { text: params.text } }],
+        context_token: params.contextToken,
+      },
+    },
+  });
 }
 
 export async function getMediaUploadUrl(
@@ -52,16 +62,25 @@ export async function sendMediaMessage(
   params: {
     toUserId: string;
     contextToken?: string;
-    itemList: SendMessageReq["item_list"];
+    itemList: MessageItem[];
   }
 ) {
   const { token, baseUrl } = await getBotCredentials(botId);
-  const body: SendMessageReq = {
-    to_user_id: params.toUserId,
-    context_token: params.contextToken,
-    item_list: params.itemList,
-  };
-  return WeixinApi.sendMessage({ baseUrl, token, body });
+  await WeixinApi.sendMessage({
+    baseUrl,
+    token,
+    body: {
+      msg: {
+        from_user_id: "",
+        to_user_id: params.toUserId,
+        client_id: randomUUID(),
+        message_type: 2, // BOT
+        message_state: 2, // FINISH
+        item_list: params.itemList,
+        context_token: params.contextToken,
+      },
+    },
+  });
 }
 
 export async function updateGetUpdatesBuf(botId: string, buf: string) {

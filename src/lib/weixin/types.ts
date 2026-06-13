@@ -161,11 +161,7 @@ export interface GetUpdatesResp {
 }
 
 export interface SendMessageReq {
-  to_user_id?: string;
-  context_token?: string;
-  item_list?: MessageItem[];
   msg?: WeixinMessage;
-  base_info?: BaseInfo;
 }
 
 export interface SendTypingReq {
