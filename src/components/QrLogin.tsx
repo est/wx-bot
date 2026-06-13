@@ -14,7 +14,6 @@ export default function QrLogin() {
   const router = useRouter();
 
   useEffect(() => {
-    // Auto-start login on mount
     (async () => {
       try {
         const resp = await fetch("/api/bots", {
@@ -29,9 +28,6 @@ export default function QrLogin() {
         setSessionId(data.sessionId);
         setQrcodeUrl(data.qrcodeUrl);
         setStatus("等待扫码...");
-
-        // Open QR in popup
-        window.open(data.qrcodeUrl, "wx-qr", "width=400,height=500");
       } catch (err) {
         setError(String(err));
       }
@@ -59,9 +55,7 @@ export default function QrLogin() {
         } else {
           setStatus(data.message || data.status);
         }
-      } catch {
-        // polling error, continue
-      }
+      } catch {}
     }, 2000);
 
     return () => {
@@ -76,12 +70,7 @@ export default function QrLogin() {
       {error && (
         <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
           {error}
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="ml-2 underline"
-          >
-            返回
-          </button>
+          <button onClick={() => router.push("/dashboard")} className="ml-2 underline">返回</button>
         </div>
       )}
 
@@ -89,23 +78,14 @@ export default function QrLogin() {
         <div className="mt-6 space-y-4 text-center">
           <p className="text-sm text-gray-600">{status}</p>
           {qrcodeUrl && (
-            <div>
-              <p className="text-xs text-gray-400 mb-2">
-                二维码已在新窗口打开，请用微信扫码
-              </p>
-              <a
-                href={qrcodeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-blue-600 hover:underline"
-              >
-                点击重新打开二维码
-              </a>
-            </div>
+            <img
+              src={`http://t.est.im/qr?s=${encodeURIComponent(qrcodeUrl)}`}
+              alt="扫码登录"
+              className="mx-auto h-64 w-64 rounded-lg border"
+            />
           )}
-          {!qrcodeUrl && (
-            <p className="text-sm text-gray-400">正在生成二维码...</p>
-          )}
+          {!qrcodeUrl && <p className="text-sm text-gray-400">正在生成二维码...</p>}
+          <p className="text-xs text-gray-400">请使用手机微信扫描二维码</p>
           <button
             onClick={() => {
               if (pollingRef.current) clearInterval(pollingRef.current);
