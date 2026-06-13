@@ -1,15 +1,7 @@
-"use client";
-
-let silkModule: any = null;
-
+// Load silk-wasm from our public/ wrapper (not bundled, browser loads on demand)
 async function loadSilk() {
-  if (silkModule) return silkModule;
-  // Use dynamic import via Function constructor to bypass Next.js bundler static analysis.
-  // The bundler intercepts import() and tries to resolve URLs at build time, causing
-  // "e.x is not a function" error. This trick prevents that.
-  const dynamicImport = new Function("url", "return import(url)");
-  silkModule = await dynamicImport("https://unpkg.com/silk-wasm@3.7.1/lib/index.mjs");
-  return silkModule;
+  const mod = await import("/silk.mjs" as string);
+  return mod;
 }
 
 function pcmToWav(pcm: Int16Array, sampleRate: number): Blob {
@@ -64,11 +56,4 @@ export async function encodePcmToSilk(
   const silk = await loadSilk();
   const result = await silk.encode(pcmData, sampleRate);
   return result.data;
-}
-
-export async function isSilkData(
-  data: ArrayBuffer | Uint8Array
-): Promise<boolean> {
-  const silk = await loadSilk();
-  return silk.isSilk(data instanceof Uint8Array ? data : new Uint8Array(data));
 }
