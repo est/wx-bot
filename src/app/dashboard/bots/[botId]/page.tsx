@@ -43,13 +43,17 @@ export default function BotChatPage({
   const loadMessages = () => {
     fetch(`/api/bots/${botId}/messages?limit=100`)
       .then(async (res) => {
-        if (!res.ok) return;
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
+        if (!res.ok) {
+          console.error("[messages] load failed:", res.status, data);
+          return;
+        }
+        if (Array.isArray(data)) {
+          console.log("[messages] loaded:", data.length, "messages");
           setMessages(data);
         }
       })
-      .catch(() => {});
+      .catch((err) => console.error("[messages] error:", err));
   };
 
   useEffect(() => {
