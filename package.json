@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "postinstall": "node scripts/create-openclaw-stubs.mjs",
+    "postinstall": "node scripts/create-openclaw-stubs.mjs && node scripts/sync-weixin-types.mjs",
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",

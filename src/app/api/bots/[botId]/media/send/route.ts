@@ -43,13 +43,13 @@ export async function POST(
 
     const item: MessageItem = { type: mediaType };
     if (mediaType === 2) {
-      item.image_item = { cdn_media: mediaRef };
+      item.image_item = { media: mediaRef };
     } else if (mediaType === 3) {
-      item.voice_item = { cdn_media: mediaRef };
+      item.voice_item = { media: mediaRef };
     } else if (mediaType === 4) {
-      item.file_item = { cdn_media: mediaRef };
+      item.file_item = { media: mediaRef };
     } else if (mediaType === 5) {
-      item.video_item = { cdn_media: mediaRef };
+      item.video_item = { media: mediaRef };
     }
 
     await sendMediaMessage(botId, {

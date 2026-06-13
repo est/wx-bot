@@ -24,7 +24,7 @@ function renderItem(botId: string, item: MessageItem, index: number) {
 
   // Image
   if (item.type === 2) {
-    const cdn = item.image_item?.cdn_media || item.image_item?.media;
+    const cdn = item.image_item?.media;
     const url = cdnUrl(botId, cdn, "image/jpeg");
     if (url) {
       return (
@@ -36,7 +36,7 @@ function renderItem(botId: string, item: MessageItem, index: number) {
 
   // Voice
   if (item.type === 3) {
-    const cdn = item.voice_item?.cdn_media || item.voice_item?.media;
+    const cdn = item.voice_item?.media;
     const url = cdnUrl(botId, cdn, "audio/silk");
     if (url) {
       return <VoiceMessage key={index} src={url} className="max-w-full" />;
@@ -46,7 +46,7 @@ function renderItem(botId: string, item: MessageItem, index: number) {
 
   // File
   if (item.type === 4) {
-    const cdn = item.file_item?.cdn_media || item.file_item?.media;
+    const cdn = item.file_item?.media;
     const name = item.file_item?.file_name || "文件";
     const url = cdnUrl(botId, cdn, "application/octet-stream");
     if (url) {
@@ -62,7 +62,7 @@ function renderItem(botId: string, item: MessageItem, index: number) {
 
   // Video
   if (item.type === 5) {
-    const cdn = item.video_item?.cdn_media || item.video_item?.media;
+    const cdn = item.video_item?.media;
     const url = cdnUrl(botId, cdn, "video/mp4");
     if (url) {
       return <video key={index} controls src={url} className="max-h-60 max-w-full rounded-lg" />;
