@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import ChatView from "@/components/ChatView";
 import MessageInput from "@/components/MessageInput";
+import WebhookManager from "@/components/WebhookManager";
 import type { WeixinMessage } from "@/lib/weixin/types";
 
 interface BotInfo {
@@ -22,6 +23,7 @@ export default function BotChatPage({
   const [messages, setMessages] = useState<WeixinMessage[]>([]);
   const [bot, setBot] = useState<BotInfo | null>(null);
   const [error, setError] = useState("");
+  const [showWebhooks, setShowWebhooks] = useState(false);
   const esRef = useRef<EventSource | null>(null);
   const router = useRouter();
 
@@ -110,10 +112,21 @@ export default function BotChatPage({
             {bot?.status === "active" ? "在线" : bot?.status}
           </p>
         </div>
-        <button onClick={() => router.push("/dashboard")} className="text-sm text-gray-500 hover:text-gray-700">
-          &larr; 返回
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={() => setShowWebhooks(!showWebhooks)} className="text-sm text-gray-500 hover:text-gray-700">
+            Webhook
+          </button>
+          <button onClick={() => router.push("/dashboard")} className="text-sm text-gray-500 hover:text-gray-700">
+            &larr; 返回
+          </button>
+        </div>
       </div>
+
+      {showWebhooks && (
+        <div className="border-b px-4 py-4">
+          <WebhookManager botId={botId} />
+        </div>
+      )}
 
       <ChatView messages={messages} botId={botId} />
 

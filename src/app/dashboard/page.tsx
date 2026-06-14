@@ -49,12 +49,20 @@ export default function DashboardPage() {
     <div>
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-gray-900">我的 Bot</h2>
-        <button
-          onClick={() => router.push("/dashboard/bots/new")}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          添加 Bot
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.push("/dashboard/settings")}
+            className="text-sm text-gray-500 hover:text-gray-700"
+          >
+            设置
+          </button>
+          <button
+            onClick={() => router.push("/dashboard/bots/new")}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            添加 Bot
+          </button>
+        </div>
       </div>
 
       {loading && (
