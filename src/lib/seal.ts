@@ -30,7 +30,7 @@ export function unsealWebhook(token: string): {
 } | null {
   try {
     const raw = Buffer.from(token, "base64url");
-    if (raw.length !== 100) return null;
+    if (raw.length !== 68) return null;
     const payload = raw.subarray(0, 36);
     const expected = createHmac("sha256", SEAL_SECRET).update(payload).digest();
     if (!timingSafeEqual(raw.subarray(36), expected)) return null;
