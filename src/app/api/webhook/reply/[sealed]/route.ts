@@ -12,13 +12,13 @@ export async function GET(
   const data = unsealWebhook(sealed);
   if (!data) {
     console.log('[webhook-reply] bad seal')
-    return NextResponse.json({'text': null, 'error': 'bad seal'}, { status: 204 });
+    return NextResponse.json({ text: null, error: "bad seal" });
   }
 
   const now = Math.floor(Date.now() / 1000);
   if (data.exp < now) {
-    console.log(`[webhook-reply] expired {data.exp}`)
-    return NextResponse.json({'text': null, 'error': 'seal expired'}, { status: 204 });
+    console.log(`[webhook-reply] expired ${data.exp}`)
+    return NextResponse.json({ text: null, error: "seal expired" });
   }
 
   const { botId, sentCreate } = data;
