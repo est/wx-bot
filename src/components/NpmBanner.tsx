@@ -17,24 +17,13 @@ export default async function NpmBanner() {
   try {
     const res = await fetch(`https://registry.npmjs.org/${PKG}`, {
       next: { revalidate: 3600 },
-      headers: { Accept: "application/vnd.npm.install-v1+json" },
     });
     if (res.ok) {
       const data = await res.json();
       latest = data["dist-tags"]?.latest || "";
-      const time = data["time"]?.[latest];
-      if (time) latestDate = new Date(time).toLocaleDateString("zh-CN");
-    }
-  } catch {}
-
-  try {
-    const res = await fetch(`https://registry.npmjs.org/${PKG}/${installed}`, {
-      next: { revalidate: 86400 },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const time = data["time"]?.[installed];
-      if (time) installedDate = new Date(time).toLocaleDateString("zh-CN");
+      const timeMap = data["time"] || {};
+      if (timeMap[latest]) latestDate = new Date(timeMap[latest]).toLocaleDateString("zh-CN");
+      if (timeMap[installed]) installedDate = new Date(timeMap[installed]).toLocaleDateString("zh-CN");
     }
   } catch {}
 

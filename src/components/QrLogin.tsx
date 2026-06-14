@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function QrLogin() {
@@ -10,7 +10,6 @@ export default function QrLogin() {
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -37,30 +36,36 @@ export default function QrLogin() {
   useEffect(() => {
     if (!sessionId || !botId) return;
 
-    pollingRef.current = setInterval(async () => {
+    let cancelled = false;
+
+    async function poll() {
+      if (cancelled) return;
       try {
         const resp = await fetch(
           `/api/bots/${botId}/qr-login/poll?sessionId=${sessionId}`
         );
         const data = await resp.json();
 
+        if (cancelled) return;
+
         if (data.status === "confirmed") {
           setStatus("登录成功！");
           setDone(true);
-          if (pollingRef.current) clearInterval(pollingRef.current);
           setTimeout(() => router.push(`/dashboard/bots/${botId}`), 1000);
         } else if (data.status === "expired") {
           setError(data.message || "二维码已过期");
-          if (pollingRef.current) clearInterval(pollingRef.current);
         } else {
           setStatus(data.message || data.status);
+          setTimeout(poll, 2000);
         }
-      } catch {}
-    }, 2000);
+      } catch {
+        if (!cancelled) setTimeout(poll, 2000);
+      }
+    }
 
-    return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current);
-    };
+    poll();
+
+    return () => { cancelled = true; };
   }, [sessionId, botId, router]);
 
   return (
@@ -87,10 +92,7 @@ export default function QrLogin() {
           {!qrcodeUrl && <p className="text-sm text-gray-400">正在生成二维码...</p>}
           <p className="text-xs text-gray-400">请使用手机微信扫描二维码</p>
           <button
-            onClick={() => {
-              if (pollingRef.current) clearInterval(pollingRef.current);
-              router.push("/dashboard");
-            }}
+            onClick={() => router.push("/dashboard")}
             className="text-sm text-gray-500 hover:text-red-600"
           >
             取消

@@ -73,6 +73,10 @@ export async function GET(req: NextRequest) {
         response_body TEXT,
         created_at INTEGER NOT NULL
       );
+
+      CREATE INDEX IF NOT EXISTS idx_bots_status ON bots(status);
+      CREATE INDEX IF NOT EXISTS idx_bots_user_id ON bots(user_id);
+      CREATE INDEX IF NOT EXISTS idx_messages_bot_id ON messages(bot_id, id);
     `);
 
     return NextResponse.json({ ok: true, dropd: drop || null, message: "Database initialized" });

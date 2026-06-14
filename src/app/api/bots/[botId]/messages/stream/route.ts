@@ -10,27 +10,6 @@ async function touchBot(botId: string) {
   await db.update(bots).set({ updatedAt: new Date() }).where(eq(bots.id, botId));
 }
 
-async function ensureQstashChain() {
-  if (!process.env.QSTASH_TOKEN) return;
-
-  const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : "http://localhost:3000";
-
-  const pollIntervalSec = 120;
-
-  fetch("https://qstash.upstash.io/v2/publish", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.QSTASH_TOKEN}`,
-      "Content-Type": "application/json",
-      "Upstash-Deduplication-Id": "poll-chain",
-      "Upstash-Deduplication-Window": `${pollIntervalSec}`,
-    },
-    body: JSON.stringify({ url: `${baseUrl}/api/cron/poll`, body: "{}" }),
-  }).catch(() => {});
-}
-
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ botId: string }> }
@@ -44,8 +23,6 @@ export async function GET(
 
   // Mark bot as actively connected
   await touchBot(botId);
-  // Kick off background collection chain if not already running
-  ensureQstashChain();
 
   const encoder = new TextEncoder();
   let closed = false;
@@ -61,7 +38,7 @@ export async function GET(
         controller.enqueue(encoder.encode(": heartbeat\n\n"));
         // Update updatedAt so QStash knows this bot has an active browser connection
         try { await touchBot(botId); } catch {}
-      }, 8000);
+      }, 20000);
 
       req.signal.addEventListener("abort", () => {
         closed = true;
