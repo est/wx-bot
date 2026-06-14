@@ -71,3 +71,18 @@ export const messages = sqliteTable("messages", {
 }, (table) => [
   index("idx_messages_bot_id").on(table.botId, table.id),
 ]);
+
+export const invites = sqliteTable("invites", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  expiresAt: integer("expires_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  usedAt: integer("used_at", { mode: "timestamp" }),
+}, (table) => [
+  index("idx_invites_token").on(table.token),
+]);

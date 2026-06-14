@@ -10,8 +10,8 @@ import type {
   AuthenticationResponseJSON,
 } from "@simplewebauthn/types";
 import { db } from "@/lib/db";
-import { users, passkeys } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { users, passkeys, invites } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { getSession } from "./session";
 
@@ -161,4 +161,98 @@ export async function verifyLogin(origin: string, response: AuthenticationRespon
   await session.save();
 
   return { userId: passkeyRecord.userId, credentialId: passkeyRecord.id };
+}
+
+export async function generateInviteRegisterOptions(origin: string, token: string) {
+  const invite = await db.query.invites.findFirst({
+    where: eq(invites.token, token),
+  });
+  if (!invite) throw new Error("Invitation not found");
+  if (invite.expiresAt && invite.expiresAt.getTime() < Date.now()) {
+    throw new Error("Invitation has expired");
+  }
+
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, invite.userId),
+  });
+  if (!user) throw new Error("User not found");
+
+  const existingPasskeys = await db.query.passkeys.findMany({
+    where: eq(passkeys.userId, user.id),
+  });
+
+  const options = await generateRegistrationOptions({
+    rpName: "wx-bot",
+    rpID: getRpId(),
+    userName: user.name,
+    attestationType: "none",
+    excludeCredentials: existingPasskeys.map((pk) => ({ id: pk.id })),
+    authenticatorSelection: {
+      residentKey: "preferred",
+      userVerification: "preferred",
+    },
+  });
+
+  const session = await getSession();
+  session.challenge = options.challenge;
+  session.webauthnUserId = user.webauthnUserId;
+  session.userName = user.name;
+  session.inviteToken = token;
+  await session.save();
+
+  return { options, userName: user.name };
+}
+
+export async function verifyInviteRegister(origin: string, response: RegistrationResponseJSON) {
+  const session = await getSession();
+  const expectedChallenge = session.challenge;
+  const webauthnUserId = session.webauthnUserId;
+  const inviteToken = session.inviteToken;
+
+  if (!expectedChallenge) throw new Error("Challenge not found");
+  if (!webauthnUserId) throw new Error("WebAuthn user ID not found");
+  if (!inviteToken) throw new Error("Invite token not found");
+
+  const invite = await db.query.invites.findFirst({
+    where: eq(invites.token, inviteToken),
+  });
+  if (!invite) throw new Error("Invitation not found");
+  if (invite.expiresAt && invite.expiresAt.getTime() < Date.now()) {
+    throw new Error("Invitation has expired");
+  }
+
+  const verification = await verifyRegistrationResponse({
+    response,
+    expectedChallenge,
+    expectedOrigin: origin,
+    expectedRPID: getRpId(),
+  });
+
+  if (!verification.verified || !verification.registrationInfo) {
+    throw new Error("Registration verification failed");
+  }
+
+  const { credential, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
+
+  await db.insert(passkeys).values({
+    id: credential.id,
+    userId: invite.userId,
+    webauthnUserId,
+    publicKey: Buffer.from(credential.publicKey),
+    counter: credential.counter,
+    deviceType: credentialDeviceType,
+    backedUp: credentialBackedUp,
+    transports: credential.transports?.join(",") ?? "",
+  });
+
+  await db.update(invites).set({ usedAt: new Date() }).where(eq(invites.id, invite.id));
+
+  session.challenge = undefined;
+  session.webauthnUserId = undefined;
+  session.userName = undefined;
+  session.inviteToken = undefined;
+  session.userId = invite.userId;
+  await session.save();
+
+  return { userId: invite.userId, credentialId: credential.id };
 }
