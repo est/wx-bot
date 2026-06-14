@@ -38,24 +38,17 @@ export default async function NpmBanner() {
     }
   } catch {}
 
-  const outdated = latest && installed !== latest;
-
   return (
     <div className="flex items-center justify-center gap-3 py-1.5 text-xs text-gray-400">
       <a href={NPM_URL} target="_blank" rel="noopener noreferrer"
         className="hover:text-gray-600 font-mono">{PKG}</a>
       <span>
-        {installed}{installedDate && ` (${installedDate})`}
+        installed {installed}{installedDate && ` (${installedDate})`}
       </span>
-      {outdated && (
-        <>
-          <span className="text-orange-400">&rarr;</span>
-          <span className="text-orange-500">
-            {latest}{latestDate && ` (${latestDate})`}
-          </span>
-        </>
-      )}
-      {outdated && (
+      <span>
+        npm {latest}{latestDate && ` (${latestDate})`}
+      </span>
+      {latest && installed !== latest && (
         <a href={NPM_URL} target="_blank" rel="noopener noreferrer"
           className="text-orange-500 hover:underline">update</a>
       )}
