@@ -145,10 +145,11 @@ export default function MessageInput({
           console.log("[Recording] upload:", uploadResp.status, uploadData);
           if (!uploadResp.ok) throw new Error(uploadData.error || `上传失败 HTTP ${uploadResp.status}`);
 
+          const playtimeMs = Math.round((pcmInt16.length / 24000) * 1000);
           const sendResp = await fetch(`/api/bots/${botId}/media/send`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ mediaRef: uploadData.mediaRef, mediaType: 3 }),
+            body: JSON.stringify({ mediaRef: uploadData.mediaRef, mediaType: 3, playtime: playtimeMs }),
           });
           const sendData = await sendResp.json();
           console.log("[Recording] send:", sendResp.status, sendData);

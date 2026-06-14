@@ -22,7 +22,7 @@ export async function POST(
       return NextResponse.json({ error: "Bot not linked to a WeChat user" }, { status: 400 });
     }
 
-    const { mediaRef, mediaType, contextToken } = (await req.json()) as {
+    const { mediaRef, mediaType, contextToken, playtime } = (await req.json()) as {
       mediaRef: {
         encrypt_query_param?: string;
         aes_key?: string;
@@ -31,6 +31,7 @@ export async function POST(
       };
       mediaType: number;
       contextToken?: string;
+      playtime?: number;
     };
 
     if (!mediaRef || !mediaType) {
@@ -45,7 +46,7 @@ export async function POST(
     if (mediaType === 2) {
       item.image_item = { media: mediaRef };
     } else if (mediaType === 3) {
-      item.voice_item = { media: mediaRef };
+      item.voice_item = { media: mediaRef, playtime };
     } else if (mediaType === 4) {
       item.file_item = { media: mediaRef };
     } else if (mediaType === 5) {

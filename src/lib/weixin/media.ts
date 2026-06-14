@@ -47,11 +47,11 @@ export async function uploadMedia(
   }
 
   // Delegate CDN upload to the official package's function
+  // upload_full_url already contains filekey, no need to pass it separately
   const { downloadParam } = await uploadBufferToCdn({
     buf: fileBuffer,
     uploadFullUrl: uploadResp.upload_full_url,
     uploadParam: uploadResp.upload_param,
-    filekey,
     cdnBaseUrl: DEFAULT_CDN_BASE,
     label: "uploadMedia",
     aeskey,
