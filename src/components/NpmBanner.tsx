@@ -41,6 +41,8 @@ export default async function NpmBanner() {
         <a href={NPM_URL} target="_blank" rel="noopener noreferrer"
           className="text-orange-500 hover:underline">update</a>
       )}
+      <a href="/dashboard/settings"
+        className="ml-2 hover:text-gray-600">设置</a>
     </div>
   );
 }
