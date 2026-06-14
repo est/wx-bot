@@ -54,7 +54,6 @@ async function sendAndCapture(
   });
 
   // Store in messages table
-  // sendMessage returns {} — use Date.now() as approximate create_time_ms
   await db.insert(messages).values({
     botId,
     fromUserId: "",
@@ -63,7 +62,6 @@ async function sendAndCapture(
     messageType: 2,
     content: JSON.stringify([item]),
     responseBody,
-    createTimeMs: Date.now(),
   });
 
   return { responseBody };
@@ -127,7 +125,6 @@ export async function sendMediaMessage(
     messageType: 2,
     content: JSON.stringify(params.itemList),
     responseBody,
-    createTimeMs: Date.now(),
   });
 
   return { responseBody };

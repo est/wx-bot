@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { messages } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { unsealWebhook } from "@/lib/seal";
 
 export async function GET(
@@ -19,14 +19,14 @@ export async function GET(
     return NextResponse.json({ text: null, error: "seal expired" });
   }
 
-  const { botId, toUserId, exp } = data;
+  const { botId, toUserId } = data;
   const waitfor = Math.min(
     Math.max(Number(req.nextUrl.searchParams.get("waitfor")) || 0, 0),
     30
   );
 
   async function checkReply() {
-    // Find the latest outgoing message to this user (set by webhook send)
+    // Latest outgoing message to this user — createdAt is the DB insertion timestamp
     const sentMsg = await db.query.messages.findFirst({
       where: and(
         eq(messages.botId, botId),
@@ -34,19 +34,23 @@ export async function GET(
         eq(messages.direction, "out")
       ),
       orderBy: (t, { desc }) => desc(t.id),
-      columns: { createTimeMs: true },
+      columns: { createdAt: true },
     });
 
-    if (!sentMsg?.createTimeMs) return null;
+    if (!sentMsg) return null;
+    const sentAt = sentMsg.createdAt.getTime();
 
-    // Find incoming message quoting that sent message (createTimeMs = ref_msg timestamp)
+    // Incoming message quoting that sent message
+    // createTimeMs stores ref_msg.message_item.create_time_ms (ms since epoch)
+    // Match against outgoing createdAt (also ms since epoch), allow 5s tolerance
     const reply = await db.query.messages.findFirst({
       where: and(
         eq(messages.botId, botId),
         eq(messages.direction, "in"),
-        eq(messages.createTimeMs, sentMsg.createTimeMs)
+        sql`abs(${messages.createTimeMs} - ${sentAt}) < 5000`
       ),
       columns: { content: true },
+      orderBy: (t, { desc }) => desc(t.id),
     });
 
     if (!reply) return null;
