@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ sealed: string }> }
 ) {
   const { sealed } = await params;
-  const data = await unsealWebhook(sealed);
+  const data = unsealWebhook(sealed);
   if (!data) {
     return new NextResponse(null, { status: 204 });
   }

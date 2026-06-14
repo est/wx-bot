@@ -37,7 +37,7 @@ export async function POST(
   });
 
   const now = Math.floor(Date.now() / 1000);
-  const sealed = await sealWebhook({
+  const sealed = sealWebhook({
     botId: webhook.botId,
     toUserId: bot.ownerWxUserId,
     sentCreate: result.createTimeMs || 0,
