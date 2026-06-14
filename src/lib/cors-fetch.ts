@@ -1,21 +1,20 @@
 /**
  * Media URL helpers.
  *
- * Uses the official openclaw-weixin package's downloadAndDecryptBuffer()
- * for CDN fetch + AES-ECB decrypt. We pass the raw message fields (eqp, ak, fu)
- * to the download endpoint, which delegates to the package.
+ * Builds URLs for the cdn-proxy endpoint, which delegates to the official
+ * openclaw-weixin package's downloadAndDecryptBuffer() for CDN fetch + AES-ECB decrypt.
+ * Raw message fields (eqp, ak, fu) are passed as query params — the proxy handles
+ * URL construction and decryption.
  *
- * This way, if the package changes its URL construction or decrypt logic,
- * it adapts automatically on the next deploy.
+ * If the package changes its decrypt logic, the proxy adapts automatically on next deploy.
  */
 
 import type { CDNMedia } from "@/lib/weixin/types";
 
-const MEDIA_DOWNLOAD = "/api/media-download";
+const CDN_PROXY = "/api/cdn-proxy";
 
 /**
- * Build a download URL from raw CDN media fields.
- * Pass the fields directly from the message — don't pre-process them.
+ * Build a CDN proxy URL from raw CDN media fields.
  */
 export function cdnProxyUrl(cdn: CDNMedia, mime: string): string | null {
   if (!cdn.encrypt_query_param && !cdn.full_url) return null;
@@ -24,7 +23,7 @@ export function cdnProxyUrl(cdn: CDNMedia, mime: string): string | null {
   if (cdn.encrypt_query_param) p.set("eqp", cdn.encrypt_query_param);
   if (cdn.aes_key) p.set("ak", cdn.aes_key);
   if (cdn.full_url) p.set("fu", cdn.full_url);
-  return `${MEDIA_DOWNLOAD}?${p}`;
+  return `${CDN_PROXY}?${p}`;
 }
 
 /**

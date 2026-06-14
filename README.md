@@ -52,7 +52,7 @@
 │  浏览器 UI   │────▶│ Next.js API  │────▶│ iLink WeChat  │
 │             │◀────│   Routes     │◀────│     API       │
 │  SSE 长连接  │     │              │     │               │
-│  SILK WASM  │     │ media-download│     │  CDN Upload   │
+│  SILK WASM  │     │ cdn-proxy     │     │  CDN Upload   │
 │  AES-ECB    │     │ (decrypt)    │     │  CDN Download │
 └─────────────┘     └──────────────┘     └───────────────┘
                            │
@@ -183,7 +183,7 @@ SendMessageReq {
 |---|---|
 | **深路径导入** | 包没有 `exports` 字段，本项目通过 `@tencent-weixin/openclaw-weixin/dist/src/...` 导入。如果包重构目录结构，所有 import 路径失效。 |
 | **`uploadBufferToCdn` 签名** | 参数 `{ buf, uploadFullUrl, uploadParam, filekey, cdnBaseUrl, label, aeskey }`，返回 `{ downloadParam }`。如果参数名或返回值变化，`media.ts` 需要更新。 |
-| **`downloadAndDecryptBuffer` 签名** | 参数 `(encryptedQueryParam, aesKeyBase64, cdnBaseUrl, label, fullUrl?)`。如果参数顺序或 `aes_key` 解析逻辑变化，`media-download` 需要更新。 |
+| **`downloadAndDecryptBuffer` 签名** | 参数 `(encryptedQueryParam, aesKeyBase64, cdnBaseUrl, label, fullUrl?)`。如果参数顺序或 `aes_key` 解析逻辑变化，`cdn-proxy` 需要更新。 |
 | **`aes_key` 编码格式** | 消息中 `aes_key` 必须是 `Buffer.from(hex).toString("base64")`。如果官方改为直接用原始字节 base64，所有已发消息的解密会失败。 |
 | **`SendMessageReq` 包装格式** | 必须用 `{ msg: { ... } }` 包装，flat 字段会被忽略。如果 API 改为接受 flat 格式，发送消息会静默失败。 |
 | **iLink API 端点路径** | 如 `ilink/bot/sendmessage`。如果端点变化，所有 API 调用返回 404。 |
