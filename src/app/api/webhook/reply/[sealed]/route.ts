@@ -17,7 +17,7 @@ export async function GET(
 
   const now = Math.floor(Date.now() / 1000);
   if (data.exp < now) {
-    console.log(`[webhook-reply] expired ${data.exp}`)
+    console.log(`[webhook-reply] expired: exp=${data.exp} now=${now} diff=${data.exp - now}s`)
     return NextResponse.json({ text: null, error: "seal expired" });
   }
 

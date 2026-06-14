@@ -4,6 +4,11 @@ export const SEAL_SECRET =
   process.env.VERCEL_PROJECT_ID || "wx-bot-local-dev-seal-fallback";
 
 // Compact binary seal: sentCreate(8) + exp(4) + botId(16) + HMAC(32) = 60 bytes → ~80 chars base64url
+//
+// sentCreate: the create_time_ms of the sent message, used to match the quoted reply
+// exp: unix timestamp (seconds) when this pollUrl expires, prevents unbounded polling
+// botId: which bot this webhook belongs to
+// HMAC-SHA256: prevents forgery
 
 export function sealWebhook(data: {
   botId: string;

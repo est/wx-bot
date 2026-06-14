@@ -23,9 +23,19 @@ export async function POST(
     return NextResponse.json({ error: "Bot not configured" }, { status: 400 });
   }
 
-  const body = await req.json();
-  const text = body.text as string;
-  const timeout = Math.min(Math.max(body.timeout || 300, 1), 3600);
+  let text: string;
+  let timeout: number;
+
+  const ct = req.headers.get("content-type") || "";
+  if (ct.includes("application/x-www-form-urlencoded")) {
+    const form = await req.formData();
+    text = String(form.get("text") || "");
+    timeout = Math.min(Math.max(Number(form.get("timeout")) || 300, 1), 3600);
+  } else {
+    const body = await req.json();
+    text = body.text;
+    timeout = Math.min(Math.max(body.timeout || 300, 1), 3600);
+  }
 
   if (!text) {
     return NextResponse.json({ error: "Missing text" }, { status: 400 });
@@ -42,6 +52,8 @@ export async function POST(
     sentCreate: result.createTimeMs || 0,
     exp: now + timeout,
   });
+
+  console.log(`[webhook-send] sentCreate=${result.createTimeMs} timeout=${timeout} exp=${now + timeout}`);
 
   await db.update(botWebhooks)
     .set({ accessedAt: new Date() })
