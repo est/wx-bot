@@ -11,11 +11,13 @@ export async function GET(
   const { sealed } = await params;
   const data = unsealWebhook(sealed);
   if (!data) {
+    console.log("[webhook-reply] bad seal");
     return NextResponse.json({ text: null, error: "bad seal" });
   }
 
   const now = Math.floor(Date.now() / 1000);
   if (data.exp < now) {
+    console.log(`[webhook-reply] expired: exp=${data.exp} now=${now} diff=${data.exp - now}s`);
     return NextResponse.json({ text: null, error: "seal expired" });
   }
 
@@ -25,8 +27,9 @@ export async function GET(
     30
   );
 
+  console.log(`[webhook-reply] botId=${botId} toUserId=${toUserId} waitfor=${waitfor}`);
+
   async function checkReply() {
-    // Latest outgoing message to this user — createdAt is the DB insertion timestamp
     const sentMsg = await db.query.messages.findFirst({
       where: and(
         eq(messages.botId, botId),
@@ -34,26 +37,33 @@ export async function GET(
         eq(messages.direction, "out")
       ),
       orderBy: (t, { desc }) => desc(t.id),
-      columns: { createdAt: true },
+      columns: { id: true, createdAt: true, createTimeMs: true },
     });
 
-    if (!sentMsg) return null;
+    if (!sentMsg) {
+      console.log("[webhook-reply] no outgoing message found");
+      return null;
+    }
     const sentAt = sentMsg.createdAt.getTime();
+    console.log(`[webhook-reply] latest outgoing: id=${sentMsg.id} createdAt=${sentAt} createTimeMs=${sentMsg.createTimeMs}`);
 
-    // Incoming message quoting that sent message
-    // createTimeMs stores ref_msg.message_item.create_time_ms (ms since epoch)
-    // Match against outgoing createdAt (also ms since epoch), allow 5s tolerance
     const reply = await db.query.messages.findFirst({
       where: and(
         eq(messages.botId, botId),
         eq(messages.direction, "in"),
         sql`abs(${messages.createTimeMs} - ${sentAt}) < 5000`
       ),
-      columns: { content: true },
+      columns: { id: true, createTimeMs: true, content: true },
       orderBy: (t, { desc }) => desc(t.id),
     });
 
-    if (!reply) return null;
+    if (!reply) {
+      console.log("[webhook-reply] no matching incoming message");
+      return null;
+    }
+
+    console.log(`[webhook-reply] match: id=${reply.id} createTimeMs=${reply.createTimeMs}`);
+
     try {
       const items = JSON.parse(reply.content);
       return items?.[0]?.text_item?.text || null;
