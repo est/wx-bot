@@ -28,7 +28,7 @@ async function sendAndCapture(
   toUserId: string,
   contextToken: string | undefined,
   item: MessageItem
-): Promise<{ responseBody: string; createTimeMs: number | null }> {
+): Promise<{ responseBody: string }> {
   const { token, baseUrl } = await getBotCredentials(botId);
   const msg = {
     from_user_id: "",
@@ -53,16 +53,8 @@ async function sendAndCapture(
     label: "sendMessage",
   });
 
-  // Extract create_time_ms from response for webhook matching
-  let createTimeMs: number | null = null;
-  try {
-    const resp = JSON.parse(responseBody);
-    console.log("[sendMessage] response keys:", Object.keys(resp));
-    createTimeMs = resp.create_time_ms || resp.msg?.create_time_ms || resp.data?.create_time_ms || null;
-    if (!createTimeMs) console.log("[sendMessage] no create_time_ms, body:", responseBody.slice(0, 500));
-  } catch {}
-
   // Store in messages table
+  // sendMessage returns {} — use Date.now() as approximate create_time_ms
   await db.insert(messages).values({
     botId,
     fromUserId: "",
@@ -71,10 +63,10 @@ async function sendAndCapture(
     messageType: 2,
     content: JSON.stringify([item]),
     responseBody,
-    createTimeMs,
+    createTimeMs: Date.now(),
   });
 
-  return { responseBody, createTimeMs };
+  return { responseBody };
 }
 
 export async function sendTextMessage(
@@ -127,12 +119,6 @@ export async function sendMediaMessage(
     label: "sendMessage",
   });
 
-  let createTimeMs: number | null = null;
-  try {
-    const resp = JSON.parse(responseBody);
-    createTimeMs = resp.create_time_ms || resp.msg?.create_time_ms || null;
-  } catch {}
-
   await db.insert(messages).values({
     botId,
     fromUserId: "",
@@ -141,10 +127,10 @@ export async function sendMediaMessage(
     messageType: 2,
     content: JSON.stringify(params.itemList),
     responseBody,
-    createTimeMs,
+    createTimeMs: Date.now(),
   });
 
-  return { responseBody, createTimeMs };
+  return { responseBody };
 }
 
 export async function updateGetUpdatesBuf(botId: string, buf: string) {
