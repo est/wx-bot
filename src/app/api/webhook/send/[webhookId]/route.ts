@@ -59,5 +59,7 @@ export async function POST(
     .set({ accessedAt: new Date() })
     .where(eq(botWebhooks.id, webhookId));
 
-  return NextResponse.json({ pollUrl: `/api/webhook/reply/${sealed}` });
+  return NextResponse.json({
+    pollUrl: `${req.nextUrl.origin}/api/webhook/reply/${sealed}`,
+  });
 }

@@ -57,7 +57,9 @@ async function sendAndCapture(
   let createTimeMs: number | null = null;
   try {
     const resp = JSON.parse(responseBody);
-    createTimeMs = resp.create_time_ms || resp.msg?.create_time_ms || null;
+    console.log("[sendMessage] response keys:", Object.keys(resp));
+    createTimeMs = resp.create_time_ms || resp.msg?.create_time_ms || resp.data?.create_time_ms || null;
+    if (!createTimeMs) console.log("[sendMessage] no create_time_ms, body:", responseBody.slice(0, 500));
   } catch {}
 
   // Store in messages table
