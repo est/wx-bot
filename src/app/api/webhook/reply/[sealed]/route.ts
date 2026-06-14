@@ -11,12 +11,14 @@ export async function GET(
   const { sealed } = await params;
   const data = unsealWebhook(sealed);
   if (!data) {
-    return new NextResponse(null, { status: 204 });
+    console.log('[webhook-reply] bad seal')
+    return NextResponse.json({'text': null, 'error': 'bad seal'}, { status: 204 });
   }
 
   const now = Math.floor(Date.now() / 1000);
   if (data.exp < now) {
-    return new NextResponse(null, { status: 204 });
+    console.log(`[webhook-reply] expired {data.exp}`)
+    return NextResponse.json({'text': null, 'error': 'seal expired'}, { status: 204 });
   }
 
   const { botId, sentCreate } = data;
@@ -51,7 +53,7 @@ export async function GET(
   }
 
   if (waitfor <= 0) {
-    return new NextResponse(null, { status: 204 });
+    return NextResponse.json({'text': null}, { status: 200 });
   }
 
   const deadline = Date.now() + waitfor * 1000;
@@ -63,5 +65,5 @@ export async function GET(
     }
   }
 
-  return new NextResponse(null, { status: 204 });
+  return NextResponse.json({'text': null}, { status: 200 });
 }
