@@ -3,10 +3,10 @@ import { downloadAndDecryptBuffer } from "@tencent-weixin/openclaw-weixin/dist/s
 import { downloadPlainCdnBuffer } from "@tencent-weixin/openclaw-weixin/dist/src/cdn/pic-decrypt.js";
 
 /**
- * Media proxy — delegates to the official openclaw-weixin package for CDN fetch + decrypt.
+ * Media download — delegates to the official openclaw-weixin package for CDN fetch + decrypt.
  *
  * Accepts the raw CDN media fields from the message body (not pre-constructed URLs).
- * If the package changes its field parsing or decrypt logic, this proxy adapts automatically.
+ * If the package changes its field parsing or decrypt logic, this adapts automatically.
  *
  * Query params:
  *   eqp  — encrypt_query_param (CDN download param)
@@ -31,10 +31,10 @@ export async function GET(req: NextRequest) {
     let data: Buffer;
     if (ak) {
       // Encrypted: use package's decrypt function
-      data = await downloadAndDecryptBuffer(eqp, ak, cdn, "media-proxy", fu);
+      data = await downloadAndDecryptBuffer(eqp, ak, cdn, "media-download", fu);
     } else {
       // Plain: just download
-      data = await downloadPlainCdnBuffer(eqp, cdn, "media-proxy", fu);
+      data = await downloadPlainCdnBuffer(eqp, cdn, "media-download", fu);
     }
 
     return new Response(new Uint8Array(data), {

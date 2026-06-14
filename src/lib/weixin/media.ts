@@ -58,7 +58,7 @@ export async function uploadMedia(
   });
 
   // aes_key format: base64 of hex string (matches official package)
-  // Include full_url so media-proxy can download without fallback URL construction
+  // Include full_url so media-download can download without fallback URL construction
   const fullUrl = `${DEFAULT_CDN_BASE}/download?encrypted_query_param=${encodeURIComponent(downloadParam)}`;
   return {
     encrypt_query_param: downloadParam,
