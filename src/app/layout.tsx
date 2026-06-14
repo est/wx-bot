@@ -15,8 +15,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN">
-      <body className="min-h-screen bg-gray-50 text-gray-900 antialiased">
-        {children}
+      <body className="flex min-h-screen flex-col bg-gray-50 text-gray-900 antialiased">
+        <div className="flex-1">{children}</div>
         <NpmBanner />
       </body>
     </html>
