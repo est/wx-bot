@@ -49,11 +49,11 @@ export async function POST(
   const now = Math.floor(Date.now() / 1000);
   const sealed = sealWebhook({
     botId: webhook.botId,
-    sentCreate: result.createTimeMs || 0,
+    toUserId: bot.ownerWxUserId,
     exp: now + timeout,
   });
 
-  console.log(`[webhook-send] sentCreate=${result.createTimeMs} timeout=${timeout} exp=${now + timeout}`);
+  console.log(`[webhook-send] toUserId=${bot.ownerWxUserId} timeout=${timeout} exp=${now + timeout}`);
 
   await db.update(botWebhooks)
     .set({ accessedAt: new Date() })
