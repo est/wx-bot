@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { fmtTime } from "@/lib/fmt";
 
 interface Webhook {
   id: string;
@@ -76,8 +77,8 @@ export default function WebhookManager({ botId }: { botId: string }) {
               /api/webhook/send/{h.id}
             </code>
             <span className="text-xs text-gray-400">
-              创建于 {new Date(h.createdAt).toLocaleDateString("zh-CN")}
-              {h.accessedAt && ` · 最后使用 ${new Date(h.accessedAt).toLocaleDateString("zh-CN")}`}
+              创建于 {fmtTime(h.createdAt)}
+              {h.accessedAt && ` · 最后使用 ${fmtTime(h.accessedAt)}`}
               {!h.enabled && " · 已禁用"}
             </span>
           </div>

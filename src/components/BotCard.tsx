@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { fmtTime } from "@/lib/fmt";
 
 interface Bot {
   id: string;
@@ -24,18 +25,6 @@ const statusLabels: Record<string, string> = {
   expired: "已过期",
   error: "异常",
 };
-
-function fmtDate(d: Date) {
-  return new Date(d).toLocaleString(undefined, {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
-}
 
 export default function BotCard({ bot, onDelete }: { bot: Bot; onDelete?: () => void }) {
   const router = useRouter();
@@ -73,8 +62,8 @@ export default function BotCard({ bot, onDelete }: { bot: Bot; onDelete?: () => 
       </div>
       <div className="mt-2 text-xs text-gray-400 space-y-0.5">
         {bot.ownerWxUserId && <p>微信用户: {bot.ownerWxUserId}</p>}
-        <p>创建时间: {fmtDate(bot.createdAt)}</p>
-        <p>最后轮询: {fmtDate(bot.updatedAt)}</p>
+        <p>创建时间: {fmtTime(bot.createdAt)}</p>
+        <p>最后轮询: {fmtTime(bot.updatedAt)}</p>
       </div>
     </div>
   );

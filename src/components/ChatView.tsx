@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { WeixinMessage, MessageItem, CDNMedia } from "@/lib/weixin/types";
 import VoiceMessage from "./VoiceMessage";
 import { cdnProxyUrl, cdnPlainUrl } from "@/lib/cors-fetch";
+import { fmtTime } from "@/lib/fmt";
 
 function mediaUrl(cdn: CDNMedia | undefined, mime: string, name?: string): string | null {
   if (!cdn) return null;
@@ -110,7 +111,7 @@ function MessageBubble({
         {msg.item_list?.map((item, j) => renderItem(botId, item, j))}
         {msg.create_time_ms && (
           <p className={`mt-1 text-xs ${out ? "text-blue-100" : "text-gray-400"}`}>
-            {new Date(msg.create_time_ms).toLocaleTimeString()}
+            {fmtTime(msg.create_time_ms)}
           </p>
         )}
         <button

@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { fmtTime } from "@/lib/fmt";
 
 const PKG = "@tencent-weixin/openclaw-weixin";
 const NPM_URL = `https://www.npmjs.com/package/${PKG}`;
@@ -22,8 +23,8 @@ export default async function NpmBanner() {
       const data = await res.json();
       latest = data["dist-tags"]?.latest || "";
       const timeMap = data["time"] || {};
-      if (timeMap[latest]) latestDate = new Date(timeMap[latest]).toLocaleDateString("zh-CN");
-      if (timeMap[installed]) installedDate = new Date(timeMap[installed]).toLocaleDateString("zh-CN");
+      if (timeMap[latest]) latestDate = fmtTime(timeMap[latest]);
+      if (timeMap[installed]) installedDate = fmtTime(timeMap[installed]);
     }
   } catch {}
 
