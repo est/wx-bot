@@ -11,11 +11,13 @@ export async function GET(
   const { sealed } = await params;
   const data = unsealWebhook(sealed);
   if (!data) {
+    console.log("[webhook-reply] invalid seal");
     return new NextResponse(null, { status: 204 });
   }
 
   const now = Math.floor(Date.now() / 1000);
   if (data.exp < now) {
+    console.log("[webhook-reply] expired");
     return new NextResponse(null, { status: 204 });
   }
 
@@ -25,8 +27,24 @@ export async function GET(
     30
   );
 
+  console.log(`[webhook-reply] botId=${botId} sentCreate=${sentCreate} waitfor=${waitfor}`);
+
+  // Debug: check what create_time_ms values exist for this bot
+  const debugRows = await db
+    .select({
+      id: messages.id,
+      direction: messages.direction,
+      createTimeMs: messages.createTimeMs,
+      refCreate: sql`json_extract(${messages.content}, '$[0].ref_msg.message_item.create_time_ms')`,
+      contentSnippet: sql<string>`substr(${messages.content}, 1, 300)`,
+    })
+    .from(messages)
+    .where(eq(messages.botId, botId))
+    .orderBy(sql`${messages.id} DESC`)
+    .limit(5);
+  console.log("[webhook-reply] recent messages:", JSON.stringify(debugRows, null, 2));
+
   async function checkReply() {
-    // Match: incoming message whose ref_msg.message_item.create_time_ms == sentCreate
     const rows = await db
       .select({ content: messages.content })
       .from(messages)
@@ -38,6 +56,7 @@ export async function GET(
         )
       )
       .limit(1);
+    console.log(`[webhook-reply] json_extract match: ${rows.length} rows`);
     if (!rows.length) return null;
     try {
       const items = JSON.parse(rows[0].content);
