@@ -68,7 +68,7 @@ function renderItem(botId: string, item: MessageItem, index: number) {
   if (item.type === 4) {
     const cdn = item.file_item?.media;
     const name = item.file_item?.file_name || "文件";
-    const url = cdn?.full_url;
+    const url = mediaUrl(cdn, "application/octet-stream");
     if (url) {
       return (
         <a key={index} href={url} target="_blank" rel="noopener noreferrer"
@@ -80,7 +80,7 @@ function renderItem(botId: string, item: MessageItem, index: number) {
 
   if (item.type === 5) {
     const cdn = item.video_item?.media;
-    const url = cdn?.full_url;
+    const url = mediaUrl(cdn, "video/mp4");
     if (url) {
       return <video key={index} controls src={url} className="max-h-60 max-w-full rounded-lg" />;
     }
