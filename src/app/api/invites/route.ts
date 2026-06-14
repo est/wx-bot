@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth/guard";
 import { sealData } from "iron-session";
-import { sessionOptions } from "@/lib/auth/session";
+import { SEAL_SECRET } from "@/lib/seal";
 
 export async function POST(req: NextRequest) {
   const auth = await requireSession();
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     data.exp = Math.floor(Date.now() / 1000) + expiresInSeconds;
   }
 
-  const sealed = await sealData(data, { password: sessionOptions.password });
+  const sealed = await sealData(data, { password: SEAL_SECRET });
 
   return NextResponse.json({ token: sealed });
 }

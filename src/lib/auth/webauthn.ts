@@ -13,8 +13,9 @@ import { db } from "@/lib/db";
 import { users, passkeys } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
-import { getSession, sessionOptions } from "./session";
+import { getSession } from "./session";
 import { unsealData } from "iron-session";
+import { SEAL_SECRET } from "@/lib/seal";
 
 export function getRpId() {
   return process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.RP_ID || "localhost";
@@ -166,7 +167,7 @@ export async function verifyLogin(origin: string, response: AuthenticationRespon
 
 export async function generateInviteRegisterOptions(origin: string, token: string) {
   const data = await unsealData<{ userId: string; exp?: number }>(token, {
-    password: sessionOptions.password,
+    password: SEAL_SECRET,
   });
 
   if (data.exp && data.exp < Math.floor(Date.now() / 1000)) {

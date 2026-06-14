@@ -10,8 +10,7 @@ export interface SessionData {
 }
 
 export const sessionOptions = {
-  // 这里不要搞什么 SESSION_SECRET 。直接换 VERCEL_DEPLOYMENT_ID
-  password: process.env.VERCEL_DEPLOYMENT_ID || "wx-bot-local-dev-secret-fallback-32c",
+  password: process.env.VERCEL_PROJECT_ID || "wx-bot-local-dev-secret-fallback-32c",
   cookieName: "wx-bot-session",
   cookieOptions: {
     secure: process.env.NODE_ENV === "production",

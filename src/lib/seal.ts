@@ -1,6 +1,6 @@
 import { sealData, unsealData } from "iron-session";
 
-const SEAL_SECRET =
+export const SEAL_SECRET =
   process.env.VERCEL_PROJECT_ID || "wx-bot-local-dev-seal-fallback";
 
 export async function sealWebhook(data: {

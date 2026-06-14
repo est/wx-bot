@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { users, passkeys } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { unsealData } from "iron-session";
-import { sessionOptions } from "@/lib/auth/session";
+import { SEAL_SECRET } from "@/lib/seal";
 
 export async function GET(
   _req: NextRequest,
@@ -13,7 +13,7 @@ export async function GET(
 
   try {
     const data = await unsealData<{ userId: string; exp?: number }>(token, {
-      password: sessionOptions.password,
+      password: SEAL_SECRET,
     });
 
     if (data.exp && data.exp < Math.floor(Date.now() / 1000)) {
