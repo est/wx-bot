@@ -2,7 +2,6 @@ import crypto from "node:crypto";
 import { getMediaUploadUrl } from "./adapter";
 import { UploadMediaType } from "./client";
 import { uploadBufferToCdn } from "@tencent-weixin/openclaw-weixin/dist/src/cdn/cdn-upload.js";
-import { buildCdnDownloadUrl } from "@tencent-weixin/openclaw-weixin/dist/src/cdn/cdn-url.js";
 import { aesEcbPaddedSize } from "./cdn";
 
 const DEFAULT_CDN_BASE = "https://novac2c.cdn.weixin.qq.com/c2c";
@@ -60,10 +59,11 @@ export async function uploadMedia(
 
   // aes_key format: base64 of hex string (matches official package)
   // Include full_url so media-proxy can download without fallback URL construction
+  const fullUrl = `${DEFAULT_CDN_BASE}/download?encrypted_query_param=${encodeURIComponent(downloadParam)}`;
   return {
     encrypt_query_param: downloadParam,
     aes_key: Buffer.from(aeskeyHex).toString("base64"),
     encrypt_type: 1,
-    full_url: buildCdnDownloadUrl(downloadParam, DEFAULT_CDN_BASE),
+    full_url: fullUrl,
   };
 }
