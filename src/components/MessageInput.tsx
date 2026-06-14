@@ -77,7 +77,7 @@ export default function MessageInput({
       const sendResp = await fetch(`/api/bots/${botId}/media/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mediaRef: uploadData.mediaRef, mediaType }),
+        body: JSON.stringify({ mediaRef: uploadData.mediaRef, mediaType, fileName: pendingFile.name }),
       });
       const sendData = await sendResp.json();
       if (!sendResp.ok) throw new Error(sendData.error || `发送失败 HTTP ${sendResp.status}`);

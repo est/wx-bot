@@ -22,16 +22,19 @@ export async function POST(
       return NextResponse.json({ error: "Bot not linked to a WeChat user" }, { status: 400 });
     }
 
-    const { mediaRef, mediaType, contextToken, playtime } = (await req.json()) as {
+    const { mediaRef, mediaType, contextToken, playtime, fileName } = (await req.json()) as {
       mediaRef: {
         encrypt_query_param?: string;
         aes_key?: string;
         encrypt_type?: number;
         full_url?: string;
+        md5?: string;
+        len?: number;
       };
       mediaType: number;
       contextToken?: string;
       playtime?: number;
+      fileName?: string;
     };
 
     if (!mediaRef || !mediaType) {
@@ -42,15 +45,17 @@ export async function POST(
       return NextResponse.json({ error: "Invalid mediaType" }, { status: 400 });
     }
 
+    const { md5, len, ...mediaFields } = mediaRef;
+
     const item: MessageItem = { type: mediaType };
     if (mediaType === 2) {
-      item.image_item = { media: mediaRef };
+      item.image_item = { media: mediaFields };
     } else if (mediaType === 3) {
-      item.voice_item = { media: mediaRef, playtime };
+      item.voice_item = { media: mediaFields, playtime };
     } else if (mediaType === 4) {
-      item.file_item = { media: mediaRef };
+      item.file_item = { media: mediaFields, file_name: fileName, md5, len: len ? String(len) : undefined };
     } else if (mediaType === 5) {
-      item.video_item = { media: mediaRef };
+      item.video_item = { media: mediaFields };
     }
 
     await sendMediaMessage(botId, {

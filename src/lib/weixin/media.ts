@@ -65,5 +65,7 @@ export async function uploadMedia(
     aes_key: Buffer.from(aeskeyHex).toString("base64"),
     encrypt_type: 1,
     full_url: fullUrl,
+    md5: rawfilemd5,
+    len: rawsize,
   };
 }
