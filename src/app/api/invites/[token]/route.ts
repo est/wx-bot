@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireSession } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
-import { invites, users, passkeys } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { users, passkeys } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+import { unsealData } from "iron-session";
+import { sessionOptions } from "@/lib/auth/session";
 
 export async function GET(
   _req: NextRequest,
@@ -10,50 +11,32 @@ export async function GET(
 ) {
   const { token } = await params;
 
-  const invite = await db.query.invites.findFirst({
-    where: eq(invites.token, token),
-  });
+  try {
+    const data = await unsealData<{ userId: string; exp?: number }>(token, {
+      password: sessionOptions.password,
+    });
 
-  if (!invite) {
-    return NextResponse.json({ valid: false, reason: "邀请链接不存在" });
+    if (data.exp && data.exp < Math.floor(Date.now() / 1000)) {
+      return NextResponse.json({ valid: false, reason: "邀请链接已过期" });
+    }
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, data.userId),
+    });
+    if (!user) {
+      return NextResponse.json({ valid: false, reason: "用户不存在" });
+    }
+
+    const userPasskeys = await db.query.passkeys.findMany({
+      where: eq(passkeys.userId, data.userId),
+    });
+
+    return NextResponse.json({
+      valid: true,
+      userName: user.name,
+      passkeyCount: userPasskeys.length,
+    });
+  } catch {
+    return NextResponse.json({ valid: false, reason: "无效的邀请链接" });
   }
-
-  if (invite.expiresAt && invite.expiresAt.getTime() < Date.now()) {
-    return NextResponse.json({ valid: false, reason: "邀请链接已过期" });
-  }
-
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, invite.userId),
-  });
-
-  const passkeyCount = await db.query.passkeys.findMany({
-    where: eq(passkeys.userId, invite.userId),
-  });
-
-  return NextResponse.json({
-    valid: true,
-    userName: user?.name || "unknown",
-    passkeyCount: passkeyCount.length,
-  });
-}
-
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ token: string }> }
-) {
-  const auth = await requireSession();
-  if ("error" in auth) return auth.error;
-
-  const { token } = await params;
-
-  const invite = await db.query.invites.findFirst({
-    where: and(eq(invites.id, token), eq(invites.userId, auth.userId)),
-  });
-
-  if (!invite) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  await db.delete(invites).where(eq(invites.id, token));
-  return NextResponse.json({ ok: true });
 }

@@ -6,7 +6,7 @@ export interface SessionData {
   challenge?: string;
   webauthnUserId?: string;
   userName?: string;
-  inviteToken?: string;
+  inviteUserId?: string;
 }
 
 export const sessionOptions = {

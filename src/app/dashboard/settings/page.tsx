@@ -1,33 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
-
-interface Invite {
-  id: string;
-  token: string;
-  expiresAt: string | null;
-  createdAt: string;
-  usedAt: string | null;
-}
+import { useState } from "react";
 
 export default function SettingsPage() {
-  const [invites, setInvites] = useState<Invite[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState("");
+  const [copied, setCopied] = useState(false);
   const [expiresIn, setExpiresIn] = useState<string>("");
-
-  async function loadInvites() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/invites");
-      if (res.ok) setInvites(await res.json());
-    } catch {}
-    setLoading(false);
-  }
-
-  useEffect(() => { loadInvites(); }, []);
+  const [generating, setGenerating] = useState(false);
 
   async function createInvite() {
+    setGenerating(true);
     let expiresInSeconds: number | undefined;
     if (expiresIn === "1h") expiresInSeconds = 3600;
     else if (expiresIn === "24h") expiresInSeconds = 86400;
@@ -39,30 +20,13 @@ export default function SettingsPage() {
       body: JSON.stringify({ expiresInSeconds }),
     });
     if (res.ok) {
-      const invite = await res.json();
-      setInvites((prev) => [invite, ...prev]);
-      copyInviteLink(invite.token);
+      const data = await res.json();
+      const url = `${window.location.origin}/invite/${data.token}`;
+      navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
     }
-  }
-
-  function copyInviteLink(token: string) {
-    const url = `${window.location.origin}/invite/${token}`;
-    navigator.clipboard.writeText(url);
-    setCopied(token);
-    setTimeout(() => setCopied(""), 2000);
-  }
-
-  async function deleteInvite(id: string) {
-    const res = await fetch(`/api/invites/${id}`, { method: "DELETE" });
-    if (res.ok) setInvites((prev) => prev.filter((i) => i.id !== id));
-  }
-
-  function formatExpiry(expiresAt: string | null) {
-    if (!expiresAt) return "永不过期";
-    const d = new Date(expiresAt);
-    const now = Date.now();
-    if (d.getTime() < now) return "已过期";
-    return `${d.toLocaleDateString("zh-CN")} ${d.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`;
+    setGenerating(false);
   }
 
   return (
@@ -88,51 +52,15 @@ export default function SettingsPage() {
           </select>
           <button
             onClick={createInvite}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            disabled={generating}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            生成邀请链接
+            {generating ? "生成中..." : "生成邀请链接"}
           </button>
         </div>
 
-        {!loading && invites.length === 0 && (
-          <p className="mt-4 text-sm text-gray-400">暂无邀请链接</p>
-        )}
-
-        {invites.length > 0 && (
-          <div className="mt-4 space-y-2">
-            {invites.map((inv) => (
-              <div
-                key={inv.id}
-                className="flex items-center justify-between rounded-lg border px-4 py-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <code className="block truncate text-xs text-gray-600">
-                    {window.location.origin}/invite/{inv.token}
-                  </code>
-                  <span className="text-xs text-gray-400">
-                    创建于 {new Date(inv.createdAt).toLocaleDateString("zh-CN")}
-                    {" · "}
-                    {formatExpiry(inv.expiresAt)}
-                    {inv.usedAt && " · 已使用"}
-                  </span>
-                </div>
-                <div className="ml-3 flex shrink-0 gap-2">
-                  <button
-                    onClick={() => copyInviteLink(inv.token)}
-                    className="rounded px-2 py-1 text-xs text-blue-600 hover:bg-blue-50"
-                  >
-                    {copied === inv.token ? "已复制" : "复制"}
-                  </button>
-                  <button
-                    onClick={() => deleteInvite(inv.id)}
-                    className="rounded px-2 py-1 text-xs text-red-500 hover:bg-red-50"
-                  >
-                    删除
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+        {copied && (
+          <p className="mt-3 text-sm text-green-600">链接已复制到剪贴板</p>
         )}
       </div>
     </div>
