@@ -1,7 +1,8 @@
+import { withWorkflow } from "workflow/next";
 import type { NextConfig } from "next";
 
 const config: NextConfig = {
-  serverExternalPackages: ["@libsql/client"],
+  serverExternalPackages: ["@libsql/client", "openclaw"],
 };
 
-export default config;
+export default withWorkflow(config);
