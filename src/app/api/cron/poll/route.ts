@@ -108,6 +108,7 @@ async function handlePoll(req: Request) {
             direction: msg.message_type === 2 ? "out" : "in",
             messageType: msg.message_type || 0,
             content,
+            createTimeMs: msg.create_time_ms || null,
           });
         }
       }

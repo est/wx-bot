@@ -65,9 +65,24 @@ export const messages = sqliteTable("messages", {
   messageType: integer("message_type").notNull(),
   content: text("content").notNull(),
   responseBody: text("response_body"),
+  createTimeMs: integer("create_time_ms"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
 }, (table) => [
   index("idx_messages_bot_id").on(table.botId, table.id),
+  index("idx_messages_bot_ctms").on(table.botId, table.createTimeMs),
 ]);
+
+export const botWebhooks = sqliteTable("bot_webhooks", {
+  id: text("id").primaryKey(),
+  botId: text("bot_id")
+    .notNull()
+    .references(() => bots.id, { onDelete: "cascade" }),
+  config: text("config"),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  accessedAt: integer("accessed_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});

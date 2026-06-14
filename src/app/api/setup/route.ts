@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@libsql/client";
 
-const TABLES = ["messages", "passkeys", "bots", "users"];
+const TABLES = ["messages", "passkeys", "bots", "users", "bot_webhooks"];
 
 export async function GET(req: NextRequest) {
   const url = process.env.TURSO_DATABASE_URL;
@@ -77,6 +77,19 @@ export async function GET(req: NextRequest) {
       CREATE INDEX IF NOT EXISTS idx_bots_status ON bots(status);
       CREATE INDEX IF NOT EXISTS idx_bots_user_id ON bots(user_id);
       CREATE INDEX IF NOT EXISTS idx_messages_bot_id ON messages(bot_id, id);
+
+      -- Add create_time_ms column if missing
+      ALTER TABLE messages ADD COLUMN create_time_ms INTEGER;
+      CREATE INDEX IF NOT EXISTS idx_messages_bot_ctms ON messages(bot_id, create_time_ms);
+
+      CREATE TABLE IF NOT EXISTS bot_webhooks (
+        id TEXT PRIMARY KEY,
+        bot_id TEXT NOT NULL REFERENCES bots(id) ON DELETE CASCADE,
+        config TEXT,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        accessed_at INTEGER,
+        created_at INTEGER NOT NULL
+      );
     `);
 
     return NextResponse.json({ ok: true, dropd: drop || null, message: "Database initialized" });

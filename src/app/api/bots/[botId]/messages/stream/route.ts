@@ -64,6 +64,7 @@ export async function GET(
                 direction: "in",
                 messageType: msg.message_type || 1,
                 content: JSON.stringify(msg.item_list || []),
+                createTimeMs: msg.create_time_ms || null,
               }).catch(() => {});
             }
           }

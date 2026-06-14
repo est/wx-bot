@@ -28,7 +28,7 @@ async function sendAndCapture(
   toUserId: string,
   contextToken: string | undefined,
   item: MessageItem
-): Promise<{ responseBody: string }> {
+): Promise<{ responseBody: string; createTimeMs: number | null }> {
   const { token, baseUrl } = await getBotCredentials(botId);
   const msg = {
     from_user_id: "",
@@ -53,6 +53,13 @@ async function sendAndCapture(
     label: "sendMessage",
   });
 
+  // Extract create_time_ms from response for webhook matching
+  let createTimeMs: number | null = null;
+  try {
+    const resp = JSON.parse(responseBody);
+    createTimeMs = resp.create_time_ms || resp.msg?.create_time_ms || null;
+  } catch {}
+
   // Store in messages table
   await db.insert(messages).values({
     botId,
@@ -62,9 +69,10 @@ async function sendAndCapture(
     messageType: 2,
     content: JSON.stringify([item]),
     responseBody,
+    createTimeMs,
   });
 
-  return { responseBody };
+  return { responseBody, createTimeMs };
 }
 
 export async function sendTextMessage(
@@ -117,6 +125,12 @@ export async function sendMediaMessage(
     label: "sendMessage",
   });
 
+  let createTimeMs: number | null = null;
+  try {
+    const resp = JSON.parse(responseBody);
+    createTimeMs = resp.create_time_ms || resp.msg?.create_time_ms || null;
+  } catch {}
+
   await db.insert(messages).values({
     botId,
     fromUserId: "",
@@ -125,9 +139,10 @@ export async function sendMediaMessage(
     messageType: 2,
     content: JSON.stringify(params.itemList),
     responseBody,
+    createTimeMs,
   });
 
-  return { responseBody };
+  return { responseBody, createTimeMs };
 }
 
 export async function updateGetUpdatesBuf(botId: string, buf: string) {
