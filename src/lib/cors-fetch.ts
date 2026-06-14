@@ -16,13 +16,14 @@ const CDN_PROXY = "/api/cdn-proxy";
 /**
  * Build a CDN proxy URL from raw CDN media fields.
  */
-export function cdnProxyUrl(cdn: CDNMedia, mime: string): string | null {
+export function cdnProxyUrl(cdn: CDNMedia, mime: string, name?: string): string | null {
   if (!cdn.encrypt_query_param && !cdn.full_url) return null;
 
   const p = new URLSearchParams({ mime });
   if (cdn.encrypt_query_param) p.set("eqp", cdn.encrypt_query_param);
   if (cdn.aes_key) p.set("ak", cdn.aes_key);
   if (cdn.full_url) p.set("fu", cdn.full_url);
+  if (name) p.set("name", name);
   return `${CDN_PROXY}?${p}`;
 }
 

@@ -5,11 +5,11 @@ import type { WeixinMessage, MessageItem, CDNMedia } from "@/lib/weixin/types";
 import VoiceMessage from "./VoiceMessage";
 import { cdnProxyUrl, cdnPlainUrl } from "@/lib/cors-fetch";
 
-function mediaUrl(cdn: CDNMedia | undefined, mime: string): string | null {
+function mediaUrl(cdn: CDNMedia | undefined, mime: string, name?: string): string | null {
   if (!cdn) return null;
   const plain = cdnPlainUrl(cdn);
   if (plain) return plain;
-  return cdnProxyUrl(cdn, mime);
+  return cdnProxyUrl(cdn, mime, name);
 }
 
 function ImageMessage({ cdn }: { cdn: CDNMedia }) {
@@ -68,7 +68,7 @@ function renderItem(botId: string, item: MessageItem, index: number) {
   if (item.type === 4) {
     const cdn = item.file_item?.media;
     const name = item.file_item?.file_name || "文件";
-    const url = mediaUrl(cdn, "application/octet-stream");
+    const url = mediaUrl(cdn, "application/octet-stream", name);
     if (url) {
       return (
         <a key={index} href={url} target="_blank" rel="noopener noreferrer"

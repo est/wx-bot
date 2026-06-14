@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
   const ak = sp.get("ak") || "";
   const fu = sp.get("fu") || undefined;
   const mime = sp.get("mime") || "application/octet-stream";
+  const name = sp.get("name") || undefined;
   const cdn = sp.get("cdn") || "https://novac2c.cdn.weixin.qq.com/c2c";
 
   if (!eqp && !fu) {
@@ -42,6 +43,7 @@ export async function GET(req: NextRequest) {
       headers: {
         "Content-Type": mime,
         "Cache-Control": "public, max-age=86400",
+        ...(name ? { "Content-Disposition": `attachment; filename="${encodeURIComponent(name)}"` } : {}),
       },
     });
   } catch (err) {
