@@ -98,6 +98,10 @@ async function handlePoll(req: Request) {
           const fromUserId = msg.from_user_id || "";
           const toUserId = msg.to_user_id || "";
 
+          // If message quotes another, store the QUOTED message's create_time_ms
+          // so webhook reply can match by sentCreate directly
+          const refCreateMs = msg.item_list?.[0]?.ref_msg?.message_item?.create_time_ms;
+
           await db.insert(messages).values({
             botId: bot.id,
             fromUserId,
@@ -108,7 +112,7 @@ async function handlePoll(req: Request) {
             direction: msg.message_type === 2 ? "out" : "in",
             messageType: msg.message_type || 0,
             content,
-            createTimeMs: msg.create_time_ms || null,
+            createTimeMs: refCreateMs || msg.create_time_ms || null,
           });
         }
       }
