@@ -26,7 +26,7 @@ export async function GET(
   await touchBot(botId);
 
   // Ensure background poll chain is running
-  send("poll", {}, { delaySeconds: 0, idempotencyKey: "poll-init" }).catch(() => {});
+  send("poll", {}, { delaySeconds: 0, idempotencyKey: `poll-${Math.floor(Date.now() / 120_000)}` }).catch(() => {});
 
   const encoder = new TextEncoder();
   let closed = false;
