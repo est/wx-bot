@@ -24,17 +24,17 @@ export async function POST(
   }
 
   let text: string;
-  let timeout: number;
+  let waitfor: string | null = null;
 
   const ct = req.headers.get("content-type") || "";
   if (ct.includes("application/x-www-form-urlencoded")) {
     const form = await req.formData();
     text = String(form.get("text") || "");
-    timeout = Math.min(Math.max(Number(form.get("timeout")) || 300, 1), 3600);
+    waitfor = form.get("waitfor") as string | null;
   } else {
     const body = await req.json();
     text = body.text;
-    timeout = Math.min(Math.max(body.timeout || 300, 1), 3600);
+    waitfor = body.waitfor != null ? String(body.waitfor) : null;
   }
 
   if (!text) {
@@ -57,7 +57,13 @@ export async function POST(
     .set({ accessedAt: new Date() })
     .where(eq(botWebhooks.id, webhookId));
 
-  return NextResponse.json({
-    pollUrl: `${req.nextUrl.origin}/api/webhook/reply/${sealed}`,
-  });
+  let pollUrl = `${req.nextUrl.origin}/api/webhook/reply/${sealed}`;
+  if (waitfor) pollUrl += `?waitfor=${encodeURIComponent(waitfor)}`;
+
+  // Form: redirect to pollUrl for curl -L support
+  if (ct.includes("application/x-www-form-urlencoded")) {
+    return NextResponse.redirect(pollUrl);
+  }
+
+  return NextResponse.json({ pollUrl });
 }
