@@ -27,9 +27,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    {
-      source: "/((?!_next/static|_next/image|favicon.ico|.well-known/workflow/).*)",
-    },
-  ],
+  matcher: ["/dashboard/:path*"],
 };

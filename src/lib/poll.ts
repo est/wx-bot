@@ -6,8 +6,6 @@ import { fetchUpdates, updateGetUpdatesBuf } from "@/lib/weixin/adapter";
 const ACTIVE_THRESHOLD_MS = 30_000;
 
 export async function pollAllBots() {
-  "use step";
-
   const allBots = await db.query.bots.findMany({
     where: eq(bots.status, "active"),
   });
