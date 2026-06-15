@@ -46,14 +46,12 @@ export async function POST(
     text,
   });
 
-  const now = Math.floor(Date.now() / 1000);
   const sealed = sealWebhook({
     botId: webhook.botId,
-    toUserId: bot.ownerWxUserId,
-    exp: now + timeout,
+    sentTime: Date.now(),
   });
 
-  console.log(`[webhook-send] toUserId=${bot.ownerWxUserId} timeout=${timeout} result=${result}`);
+  console.log(`[webhook-send] botId=${webhook.botId} text=${text.slice(0, 50)}`);
 
   await db.update(botWebhooks)
     .set({ accessedAt: new Date() })
@@ -61,6 +59,5 @@ export async function POST(
 
   return NextResponse.json({
     pollUrl: `${req.nextUrl.origin}/api/webhook/reply/${sealed}`,
-    result: result
   });
 }

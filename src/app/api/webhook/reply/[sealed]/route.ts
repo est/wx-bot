@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { messages } from "@/lib/db/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, sql, desc, gte } from "drizzle-orm";
 import { unsealWebhook } from "@/lib/seal";
 
 export async function GET(
@@ -15,61 +15,58 @@ export async function GET(
     return NextResponse.json({ text: null, error: "bad seal" });
   }
 
-  const now = Math.floor(Date.now() / 1000);
-  if (data.exp < now) {
-    console.log(`[webhook-reply] expired: exp=${data.exp} now=${now} diff=${data.exp - now}s`);
-    return NextResponse.json({ text: null, error: "seal expired" });
-  }
-
-  const { botId, toUserId } = data;
+  const { botId, sentTime } = data;
   const waitfor = Math.min(
     Math.max(Number(req.nextUrl.searchParams.get("waitfor")) || 0, 0),
     30
   );
 
-  console.log(`[webhook-reply] botId=${botId} toUserId=${toUserId} waitfor=${waitfor}`);
+  console.log(`[webhook-reply] botId=${botId} sentTime=${sentTime} waitfor=${waitfor}`);
 
   async function checkReply() {
-    const sentMsg = await db.query.messages.findFirst({
-      where: and(
-        eq(messages.botId, botId),
-        eq(messages.toUserId, toUserId),
-        eq(messages.direction, "out")
-      ),
-      orderBy: (t, { desc }) => desc(t.id),
-      columns: { id: true, createdAt: true, createTimeMs: true },
-    });
+    // Find recent outgoing messages from this bot (sentTime - 10s buffer)
+    const recentOut = await db
+      .select({ createdAt: messages.createdAt })
+      .from(messages)
+      .where(
+        and(
+          eq(messages.botId, botId),
+          eq(messages.direction, "out"),
+          gte(messages.createdAt, new Date(sentTime - 10_000))
+        )
+      )
+      .orderBy(desc(messages.id))
+      .limit(10);
 
-    if (!sentMsg) {
-      console.log("[webhook-reply] no outgoing message found");
-      return null;
-    }
-    const sentAt = sentMsg.createdAt.getTime();
-    console.log(`[webhook-reply] latest outgoing: id=${sentMsg.id} createdAt=${sentAt} createTimeMs=${sentMsg.createTimeMs}`);
-
-    const reply = await db.query.messages.findFirst({
-      where: and(
-        eq(messages.botId, botId),
-        eq(messages.direction, "in"),
-        sql`abs(${messages.createTimeMs} - ${sentAt}) < 5000`
-      ),
-      columns: { id: true, createTimeMs: true, content: true },
-      orderBy: (t, { desc }) => desc(t.id),
-    });
-
-    if (!reply) {
-      console.log("[webhook-reply] no matching incoming message");
+    if (!recentOut.length) {
+      console.log("[webhook-reply] no outgoing messages found");
       return null;
     }
 
-    console.log(`[webhook-reply] match: id=${reply.id} createTimeMs=${reply.createTimeMs}`);
+    // Find incoming message quoting any of these outgoing messages
+    for (const out of recentOut) {
+      const outAt = out.createdAt.getTime();
+      const reply = await db.query.messages.findFirst({
+        where: and(
+          eq(messages.botId, botId),
+          eq(messages.direction, "in"),
+          sql`abs(${messages.createTimeMs} - ${outAt}) < 5000`
+        ),
+        columns: { id: true, createTimeMs: true, content: true },
+        orderBy: (t, { desc }) => desc(t.id),
+      });
 
-    try {
-      const items = JSON.parse(reply.content);
-      return items?.[0]?.text_item?.text || null;
-    } catch {
-      return null;
+      if (reply) {
+        console.log(`[webhook-reply] match: replyId=${reply.id} createTimeMs=${reply.createTimeMs}`);
+        try {
+          const items = JSON.parse(reply.content);
+          const text = items?.[0]?.text_item?.text || null;
+          if (text) return text;
+        } catch {}
+      }
     }
+
+    return null;
   }
 
   const immediate = await checkReply();

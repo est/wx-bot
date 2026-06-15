@@ -3,44 +3,38 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 export const SEAL_SECRET =
   process.env.VERCEL_PROJECT_ID || "wx-bot-local-dev-seal-fallback";
 
-// Compact binary seal: exp(4) + botId(16) + toUserId(16) + HMAC(32) = 68 bytes → ~92 chars base64url
+// Compact binary seal: sentTime(8) + botId(16) + HMAC(32) = 56 bytes → ~75 chars base64url
 //
+// sentTime: approximate send timestamp (Date.now() at webhook call), used to find the outgoing message
 // botId: which bot this webhook belongs to
-// toUserId: target WeChat user, used to find the latest outgoing message and its quoted reply
-// exp: unix timestamp (seconds) when this pollUrl expires, prevents unbounded polling
 // HMAC-SHA256: prevents forgery
 
 export function sealWebhook(data: {
   botId: string;
-  toUserId: string;
-  exp: number;
+  sentTime: number;
 }): string {
-  const buf = Buffer.alloc(36);
-  buf.writeUInt32BE(data.exp >>> 0, 0);
-  Buffer.from(data.botId.replace(/-/g, ""), "hex").copy(buf, 4);
-  Buffer.from(data.toUserId.replace(/-/g, ""), "hex").copy(buf, 20);
+  const buf = Buffer.alloc(24);
+  buf.writeBigInt64BE(BigInt(data.sentTime), 0);
+  Buffer.from(data.botId.replace(/-/g, ""), "hex").copy(buf, 8);
   const sig = createHmac("sha256", SEAL_SECRET).update(buf).digest();
   return Buffer.concat([buf, sig]).toString("base64url");
 }
 
 export function unsealWebhook(token: string): {
   botId: string;
-  toUserId: string;
-  exp: number;
+  sentTime: number;
 } | null {
   try {
     const raw = Buffer.from(token, "base64url");
-    if (raw.length !== 68) return null;
-    const payload = raw.subarray(0, 36);
+    if (raw.length !== 56) return null;
+    const payload = raw.subarray(0, 24);
     const expected = createHmac("sha256", SEAL_SECRET).update(payload).digest();
-    if (!timingSafeEqual(raw.subarray(36), expected)) return null;
+    if (!timingSafeEqual(raw.subarray(24), expected)) return null;
 
-    const exp = payload.readUInt32BE(0);
-    const uuidFromBuf = (offset: number, len: number) => {
-      const hex = payload.subarray(offset, offset + len).toString("hex");
-      return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
-    };
-    return { botId: uuidFromBuf(4, 16), toUserId: uuidFromBuf(20, 16), exp };
+    const sentTime = Number(payload.readBigInt64BE(0));
+    const hex = payload.subarray(8, 24).toString("hex");
+    const botId = `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+    return { botId, sentTime };
   } catch {
     return null;
   }
