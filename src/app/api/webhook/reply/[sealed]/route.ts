@@ -23,7 +23,7 @@ export async function GET(
   console.log(`[webhook-reply] botId=${botId} sentTime=${sentTime} waitfor=${waitfor}`);
 
   async function checkReply() {
-    // Why two steps instead of one SQL?
+    // Why two steps?
     //
     // When a user QUOTES a message in WeChat, the reply's content JSON contains:
     //   ref_msg.message_item.create_time_ms = the quoted message's WeChat-assigned timestamp
@@ -33,9 +33,9 @@ export async function GET(
     //
     // So we:
     // 1. Rough filter: SQL uses createTimeMs column (which stores ref_msg timestamp for
-    //    incoming messages) with a 10s window to narrow candidates
-    // 2. Precise match: parse the raw JSON to get ref_msg.message_item.create_time_ms
-    //    and compare with sentTime in JS using a 5s tolerance
+    //    incoming messages) with a 5s window to narrow candidates
+    // 2. Precise match: parse the raw JSON, sort candidates by how close
+    //    ref_msg.message_item.create_time_ms is to sentTime, return the closest
 
     // 1. Recent incoming messages (createTimeMs is a rough filter — it stores ref_msg timestamp)
     const candidates = await db
@@ -45,24 +45,28 @@ export async function GET(
         and(
           eq(messages.botId, botId),
           eq(messages.direction, "in"),
-          gte(messages.createTimeMs, sentTime - 10_000),
+          gte(messages.createTimeMs, sentTime - 5_000),
         )
       )
       .orderBy(desc(messages.id))
       .limit(10);
 
-    // 2. Parse JSON, check ref_msg.message_item.create_time_ms ≈ sentTime
-    for (const row of candidates) {
-      try {
-        const items = JSON.parse(row.content);
-        const refMs = items?.[0]?.ref_msg?.message_item?.create_time_ms;
-        if (refMs && Math.abs(refMs - sentTime) < 5000) {
-          return items[0].text_item?.text || null;
-        }
-      } catch {}
-    }
+    if (!candidates.length) return null;
 
-    return null;
+    // 2. Sort by closest ref_msg.create_time_ms to sentTime
+    const parsed = candidates
+      .map((row) => {
+        try {
+          const items = JSON.parse(row.content);
+          const refMs = items?.[0]?.ref_msg?.message_item?.create_time_ms;
+          if (refMs) return { text: items[0].text_item?.text || null, diff: Math.abs(refMs - sentTime) };
+        } catch {}
+        return null;
+      })
+      .filter((x): x is { text: string; diff: number } => x !== null)
+      .sort((a, b) => a.diff - b.diff);
+
+    return parsed[0]?.text || null;
   }
 
   const immediate = await checkReply();
