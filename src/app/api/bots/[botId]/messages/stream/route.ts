@@ -4,8 +4,7 @@ import { pollUpdates } from "@/lib/weixin/stream";
 import { db } from "@/lib/db";
 import { bots, messages } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { send } from "@vercel/queue";
-import { pollIdempotencyKey } from "@/lib/config";
+import { ensurePollChain } from "@/lib/config";
 import type { WeixinMessage } from "@/lib/weixin/client";
 
 async function touchBot(botId: string) {
@@ -27,7 +26,7 @@ export async function GET(
   await touchBot(botId);
 
   // Ensure background poll chain is running
-  send("poll", {}, { delaySeconds: 0, idempotencyKey: pollIdempotencyKey() }).catch(() => {});
+  ensurePollChain().catch(() => {});
 
   const encoder = new TextEncoder();
   let closed = false;

@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { botWebhooks, bots } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { send } from "@vercel/queue";
-import { pollIdempotencyKey } from "@/lib/config";
+import { ensurePollChain } from "@/lib/config";
 import { sealWebhook } from "@/lib/seal";
 import { sendTextMessage } from "@/lib/weixin/adapter";
 
@@ -56,7 +55,7 @@ export async function POST(
   console.log(`[webhook-send] botId=${webhook.botId} text=${text.slice(0, 50)}`);
 
   // Ensure poll chain is running to collect the reply
-  send("poll", {}, { delaySeconds: 0, idempotencyKey: pollIdempotencyKey() }).catch(() => {});
+  ensurePollChain().catch(() => {});
 
   await db.update(botWebhooks)
     .set({ accessedAt: new Date() })
