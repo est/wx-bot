@@ -48,7 +48,7 @@ export async function GET(
     //    These should be within a few seconds of each other
     for (const out of recentOut) {
       if (!out.createTimeMs) continue;
-      const outMs = out.createTimeMs.getTime();
+      const outMs = out.createTimeMs;
       const reply = await db.query.messages.findFirst({
         where: and(
           eq(messages.botId, botId),
