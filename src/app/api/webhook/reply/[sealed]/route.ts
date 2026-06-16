@@ -45,10 +45,11 @@ export async function GET(
       .orderBy((t) => sql`${t.id} DESC`)
       .limit(1);
 
-    if (!reply) return null;
-    console.log(`[webhook-reply] match: id=${reply.id} createTimeMs=${reply.createTimeMs}`);
+    if (!reply.length) return null;
+    const match = reply[0];
+    console.log(`[webhook-reply] match: id=${match.id} createTimeMs=${match.createTimeMs}`);
     try {
-      const items = JSON.parse(reply.content);
+      const items = JSON.parse(match.content);
       return items?.[0]?.text_item?.text || null;
     } catch {
       return null;
