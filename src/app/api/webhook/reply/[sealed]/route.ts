@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { messages } from "@/lib/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, gte, desc } from "drizzle-orm";
 import { unsealWebhook } from "@/lib/seal";
 
 export async function GET(
@@ -11,7 +11,6 @@ export async function GET(
   const { sealed } = await params;
   const data = unsealWebhook(sealed);
   if (!data) {
-    console.log("[webhook-reply] bad seal");
     return NextResponse.json({ text: null, error: "bad seal" });
   }
 
@@ -24,32 +23,21 @@ export async function GET(
   console.log(`[webhook-reply] botId=${botId} sentTime=${sentTime} waitfor=${waitfor}`);
 
   async function checkReply() {
-    // Find incoming message quoting an outgoing message sent near sentTime
-    const reply = await db
-      .select({ id: messages.id, createTimeMs: messages.createTimeMs, content: messages.content })
-      .from(messages)
-      .where(
-        and(
-          eq(messages.botId, botId),
-          eq(messages.direction, "in"),
-          sql`${messages.createTimeMs} IN (
-            SELECT create_time_ms FROM messages
-            WHERE bot_id = ${botId}
-              AND direction = 'out'
-              AND created_at >= ${new Date(sentTime - 10_000)}
-              AND create_time_ms IS NOT NULL
-            ORDER BY id DESC LIMIT 10
-          )`
-        )
-      )
-      .orderBy((t) => sql`${t.id} DESC`)
-      .limit(1);
+    // Incoming message quoting an outgoing message sent near sentTime
+    // createTimeMs: outgoing = Date.now() at send, incoming = ref_msg.message_item.create_time_ms
+    const reply = await db.query.messages.findFirst({
+      where: and(
+        eq(messages.botId, botId),
+        eq(messages.direction, "in"),
+        gte(messages.createTimeMs, sentTime - 10_000),
+      ),
+      columns: { content: true },
+      orderBy: (t, { desc }) => desc(t.id),
+    });
 
-    if (!reply.length) return null;
-    const match = reply[0];
-    console.log(`[webhook-reply] match: id=${match.id} createTimeMs=${match.createTimeMs}`);
+    if (!reply) return null;
     try {
-      const items = JSON.parse(match.content);
+      const items = JSON.parse(reply.content);
       return items?.[0]?.text_item?.text || null;
     } catch {
       return null;

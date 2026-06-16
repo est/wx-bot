@@ -62,6 +62,7 @@ async function sendAndCapture(
     messageType: 2,
     content: JSON.stringify([item]),
     responseBody,
+    createTimeMs: Date.now(),
   });
 
   return { responseBody };
@@ -125,6 +126,7 @@ export async function sendMediaMessage(
     messageType: 2,
     content: JSON.stringify(params.itemList),
     responseBody,
+    createTimeMs: Date.now(),
   });
 
   return { responseBody };
