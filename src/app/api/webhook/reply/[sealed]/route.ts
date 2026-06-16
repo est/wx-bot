@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { messages } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, sql, desc } from "drizzle-orm";
 import { unsealWebhook } from "@/lib/seal";
 
 export async function GET(
