@@ -1,9 +1,18 @@
 import { db } from "@/lib/db";
 import { bots, messages } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { send } from "@vercel/queue";
 import { fetchUpdates, updateGetUpdatesBuf } from "@/lib/weixin/adapter";
 
 const ACTIVE_THRESHOLD_MS = 30_000;
+const POLL_INTERVAL_SEC = 120;
+
+export async function ensurePollChain() {
+  await send("poll", {}, {
+    delaySeconds: 0,
+    idempotencyKey: `poll-${Math.floor(Date.now() / (POLL_INTERVAL_SEC * 1000))}`,
+  });
+}
 
 export async function pollAllBots() {
   const allBots = await db.query.bots.findMany({

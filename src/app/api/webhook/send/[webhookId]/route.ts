@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { botWebhooks, bots } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { ensurePollChain } from "@/lib/config";
+import { ensurePollChain } from "@/lib/poll";
 import { sealWebhook } from "@/lib/seal";
 import { sendTextMessage } from "@/lib/weixin/adapter";
 

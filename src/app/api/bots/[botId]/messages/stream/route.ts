@@ -4,7 +4,7 @@ import { pollUpdates } from "@/lib/weixin/stream";
 import { db } from "@/lib/db";
 import { bots, messages } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { ensurePollChain } from "@/lib/config";
+import { ensurePollChain } from "@/lib/poll";
 import type { WeixinMessage } from "@/lib/weixin/client";
 
 async function touchBot(botId: string) {
