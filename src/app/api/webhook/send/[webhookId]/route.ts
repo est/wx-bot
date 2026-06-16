@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { botWebhooks, bots } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { send } from "@vercel/queue";
+import { POLL_INTERVAL_MS } from "@/lib/config";
 import { sealWebhook } from "@/lib/seal";
 import { sendTextMessage } from "@/lib/weixin/adapter";
 
@@ -55,7 +56,7 @@ export async function POST(
   console.log(`[webhook-send] botId=${webhook.botId} text=${text.slice(0, 50)}`);
 
   // Ensure poll chain is running to collect the reply
-  send("poll", {}, { delaySeconds: 0, idempotencyKey: `poll-${Math.floor(Date.now() / 120_000)}` }).catch(() => {});
+  send("poll", {}, { delaySeconds: 0, idempotencyKey: `poll-${Math.floor(Date.now() / POLL_INTERVAL_MS)}` }).catch(() => {});
 
   await db.update(botWebhooks)
     .set({ accessedAt: new Date() })
