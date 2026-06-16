@@ -4,6 +4,12 @@ import { createClient } from "@libsql/client";
 const TABLES = ["messages", "passkeys", "bots", "users", "bot_webhooks"];
 
 export async function GET(req: NextRequest) {
+  // Require SETUP_SECRET env var to be set and match query param
+  const setupSecret = process.env.SETUP_SECRET;
+  if (!setupSecret || req.nextUrl.searchParams.get("secret") !== setupSecret) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const url = process.env.TURSO_DATABASE_URL;
   const authToken = process.env.TURSO_AUTH_TOKEN;
 

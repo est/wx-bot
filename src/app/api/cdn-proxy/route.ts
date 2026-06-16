@@ -2,6 +2,11 @@ import { NextRequest } from "next/server";
 import { downloadAndDecryptBuffer } from "@tencent-weixin/openclaw-weixin/dist/src/cdn/pic-decrypt.js";
 import { downloadPlainCdnBuffer } from "@tencent-weixin/openclaw-weixin/dist/src/cdn/pic-decrypt.js";
 
+const CDN_ALLOWLIST = [
+  "https://novac2c.cdn.weixin.qq.com/c2c",
+  "https://cdn.weixin.qq.com",
+];
+
 /**
  * CDN proxy — fetches encrypted media from WeChat CDN and decrypts it.
  *
@@ -14,7 +19,8 @@ import { downloadPlainCdnBuffer } from "@tencent-weixin/openclaw-weixin/dist/src
  *   ak   — aes_key (base64)
  *   fu   — full_url (optional, direct CDN URL)
  *   mime — response Content-Type
- *   cdn  — CDN base URL (optional, defaults to novac2c.cdn.weixin.qq.com/c2c)
+ *   name — filename for Content-Disposition
+ *   cdn  — CDN base URL (optional, defaults to novac2c.cdn.weixin.qq.com/c2c, must be in allowlist)
  */
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
@@ -23,7 +29,8 @@ export async function GET(req: NextRequest) {
   const fu = sp.get("fu") || undefined;
   const mime = sp.get("mime") || "application/octet-stream";
   const name = sp.get("name") || undefined;
-  const cdn = sp.get("cdn") || "https://novac2c.cdn.weixin.qq.com/c2c";
+  const cdnParam = sp.get("cdn") || CDN_ALLOWLIST[0];
+  const cdn = CDN_ALLOWLIST.some((d) => cdnParam.startsWith(d)) ? cdnParam : CDN_ALLOWLIST[0];
 
   if (!eqp && !fu) {
     return new Response("Missing eqp or fu", { status: 400 });
@@ -47,6 +54,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (err) {
-    return new Response(`Media fetch failed: ${err}`, { status: 502 });
+    console.error("[cdn-proxy]", err);
+    return new Response("Media fetch failed", { status: 502 });
   }
 }

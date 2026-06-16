@@ -52,7 +52,7 @@ export async function POST(
     sentTime: Date.now(),
   });
 
-  console.log(`[webhook-send] botId=${webhook.botId} text=${text.slice(0, 50)}`);
+  console.log(`[webhook-send] botId=${webhook.botId} len=${text.length}`);
 
   // Ensure poll chain is running to collect the reply
   ensurePollChain().catch(() => {});
