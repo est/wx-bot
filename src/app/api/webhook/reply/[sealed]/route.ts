@@ -23,6 +23,20 @@ export async function GET(
   console.log(`[webhook-reply] botId=${botId} sentTime=${sentTime} waitfor=${waitfor}`);
 
   async function checkReply() {
+    // Why two steps instead of one SQL?
+    //
+    // When a user QUOTES a message in WeChat, the reply's content JSON contains:
+    //   ref_msg.message_item.create_time_ms = the quoted message's WeChat-assigned timestamp
+    //
+    // Our sentTime is Date.now() (our server clock), which differs from WeChat's clock
+    // by a few seconds. We can't reliably match two different clock sources in SQL.
+    //
+    // So we:
+    // 1. Rough filter: SQL uses createTimeMs column (which stores ref_msg timestamp for
+    //    incoming messages) with a 10s window to narrow candidates
+    // 2. Precise match: parse the raw JSON to get ref_msg.message_item.create_time_ms
+    //    and compare with sentTime in JS using a 5s tolerance
+
     // 1. Recent incoming messages (createTimeMs is a rough filter — it stores ref_msg timestamp)
     const candidates = await db
       .select({ content: messages.content })
