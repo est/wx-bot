@@ -2,10 +2,11 @@ import { db } from "@/lib/db";
 import { bots, messages } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { send } from "@vercel/queue";
-import { fetchUpdates, updateGetUpdatesBuf } from "@/lib/weixin/adapter";
+import { fetchUpdates, notifyStart, updateGetUpdatesBuf } from "@/lib/weixin/adapter";
 
 const ACTIVE_THRESHOLD_MS = 30_000;
 const POLL_INTERVAL_SEC = 120;
+const SESSION_EXPIRED_ERRCODE = -14;
 
 export async function ensurePollChain() {
   await send("poll", {}, {
@@ -30,8 +31,18 @@ export async function pollAllBots() {
     }
 
     try {
+      // Notify server this bot is alive (keeps session active)
+      await notifyStart(bot.id);
+
       const buf = bot.getUpdatesBuf || undefined;
       const resp = await fetchUpdates(bot.id, buf);
+
+      // Session expired — clear buf so next poll starts fresh
+      if (resp.errcode === SESSION_EXPIRED_ERRCODE) {
+        console.log(`[poll] Bot ${bot.id} session expired (errcode -14), clearing buf`);
+        await updateGetUpdatesBuf(bot.id, "");
+        continue;
+      }
 
       if (resp.get_updates_buf) {
         await updateGetUpdatesBuf(bot.id, resp.get_updates_buf);

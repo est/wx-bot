@@ -164,6 +164,11 @@ export async function sendTypingIndicator(
   }
 }
 
+export async function notifyStart(botId: string) {
+  const { token, baseUrl } = await getBotCredentials(botId);
+  await WeixinApi.notifyStart({ baseUrl, token });
+}
+
 export async function getBotUpdateBuf(botId: string) {
   const bot = await db.query.bots.findFirst({ where: eq(bots.id, botId) });
   return bot?.getUpdatesBuf ?? undefined;
