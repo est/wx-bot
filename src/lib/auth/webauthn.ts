@@ -17,8 +17,14 @@ import { getSession } from "./session";
 import { unsealData } from "iron-session";
 import { SEAL_SECRET } from "@/lib/seal";
 
-export function getRpId() {
-  return process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.RP_ID || "localhost";
+const RP_HOST_ALLOWLIST = ["wx-bot.vercel.app", "wxbot.est.im"];
+
+export function getRpId(origin?: string) {
+  if (origin) {
+    const host = new URL(origin).hostname;
+    if (RP_HOST_ALLOWLIST.includes(host)) return host;
+  }
+  return RP_HOST_ALLOWLIST[0];
 }
 
 export function getOriginFromRequest(req: Request) {
@@ -30,7 +36,7 @@ export async function generateRegisterOptions(origin: string, userName: string) 
   const webauthnUserId = Buffer.from(randomUUID()).toString("base64url");
   const options = await generateRegistrationOptions({
     rpName: "wx-bot",
-    rpID: getRpId(),
+    rpID: getRpId(origin),
     userName,
     attestationType: "none",
     excludeCredentials: [],
@@ -63,7 +69,7 @@ export async function verifyRegister(origin: string, response: RegistrationRespo
     response,
     expectedChallenge,
     expectedOrigin: origin,
-    expectedRPID: getRpId(),
+    expectedRPID: getRpId(origin),
   });
 
   if (!verification.verified || !verification.registrationInfo) {
@@ -99,9 +105,9 @@ export async function verifyRegister(origin: string, response: RegistrationRespo
   return { userId, credentialId: credential.id };
 }
 
-export async function generateLoginOptions(credentialId?: string) {
+export async function generateLoginOptions(origin: string, credentialId?: string) {
   const options = await generateAuthenticationOptions({
-    rpID: getRpId(),
+    rpID: getRpId(origin),
     userVerification: "preferred",
     ...(credentialId
       ? {
@@ -136,7 +142,7 @@ export async function verifyLogin(origin: string, response: AuthenticationRespon
     response,
     expectedChallenge,
     expectedOrigin: origin,
-    expectedRPID: getRpId(),
+    expectedRPID: getRpId(origin),
     credential: {
       id: passkeyRecord.id,
       publicKey: new Uint8Array(passkeyRecord.publicKey),
@@ -185,7 +191,7 @@ export async function generateInviteRegisterOptions(origin: string, token: strin
 
   const options = await generateRegistrationOptions({
     rpName: "wx-bot",
-    rpID: getRpId(),
+    rpID: getRpId(origin),
     userName: user.name,
     attestationType: "none",
     excludeCredentials: existingPasskeys.map((pk) => ({ id: pk.id })),
@@ -219,7 +225,7 @@ export async function verifyInviteRegister(origin: string, response: Registratio
     response,
     expectedChallenge,
     expectedOrigin: origin,
-    expectedRPID: getRpId(),
+    expectedRPID: getRpId(origin),
   });
 
   if (!verification.verified || !verification.registrationInfo) {
