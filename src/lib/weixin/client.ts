@@ -4,6 +4,7 @@ export {
   getUploadUrl,
   getConfig,
   sendTyping,
+  notifyStart,
   apiPostFetch,
   apiGetFetch,
   buildBaseInfo,
