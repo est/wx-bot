@@ -44,5 +44,9 @@ declare module "@tencent-weixin/openclaw-weixin/dist/src/api/api.js" {
     label: string;
   }): Promise<string>;
 
+  export function notifyStart(
+    params: import("./types").WeixinApiOptions
+  ): Promise<unknown>;
+
   export function buildBaseInfo(): import("./types").BaseInfo;
 }
