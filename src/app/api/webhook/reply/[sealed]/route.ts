@@ -59,7 +59,11 @@ export async function GET(
         try {
           const items = JSON.parse(row.content);
           const refMs = items?.[0]?.ref_msg?.message_item?.create_time_ms;
-          if (refMs) return { text: items[0].text_item?.text || null, diff: Math.abs(refMs - sentTime) };
+          if (refMs) {
+            const item = items[0];
+            const text = item.text_item?.text || item.voice_item?.text || null;
+            return { text, diff: Math.abs(refMs - sentTime) };
+          }
         } catch {}
         return null;
       })
