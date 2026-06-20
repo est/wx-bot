@@ -52,7 +52,8 @@ export async function POST(
     waitfor = body.waitfor != null ? String(body.waitfor) : null;
   }
 
-  // URL query param takes precedence
+  // URL query params control server behavior (e.g. waitfor).
+  // POST body/form-data controls the actual webhook content (text, files).
   waitfor = req.nextUrl.searchParams.get("waitfor") || waitfor;
 
   if (!text && !file) {
