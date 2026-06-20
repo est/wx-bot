@@ -107,8 +107,10 @@ export async function POST(
   let pollUrl = `${req.nextUrl.origin}/api/webhook/reply/${sealed}`;
   if (waitfor) pollUrl += `?waitfor=${encodeURIComponent(waitfor)}`;
 
+  // Form/multipart: redirect to pollUrl for curl -L support.
+  // 303 forces the client to switch to GET for the redirect target (pollUrl is GET-only).
   if (ct.includes("multipart/form-data") || ct.includes("application/x-www-form-urlencoded")) {
-    return NextResponse.redirect(pollUrl);
+    return NextResponse.redirect(pollUrl, 303);
   }
 
   return NextResponse.json({ pollUrl });
