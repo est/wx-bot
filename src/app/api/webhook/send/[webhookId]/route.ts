@@ -52,6 +52,9 @@ export async function POST(
     waitfor = body.waitfor != null ? String(body.waitfor) : null;
   }
 
+  // URL query param takes precedence
+  waitfor = req.nextUrl.searchParams.get("waitfor") || waitfor;
+
   if (!text && !file) {
     return NextResponse.json({ error: "Missing text or file (image/audio/video)" }, { status: 400 });
   }
