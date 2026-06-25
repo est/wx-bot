@@ -4,7 +4,7 @@ import { botWebhooks, bots } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { ensurePollChain } from "@/lib/poll";
 import { sealWebhook } from "@/lib/seal";
-import { sendTextMessage, sendMediaMessage } from "@/lib/weixin/adapter";
+import { sendTextMessage, sendMediaMessage, notifyStart } from "@/lib/weixin/adapter";
 import { uploadMedia } from "@/lib/weixin/media";
 
 const FILE_FIELDS = ["image", "audio", "video"] as const;
@@ -61,6 +61,9 @@ export async function POST(
   }
 
   const toUserId = bot.ownerWxUserId;
+
+  // Ensure session is alive before sending (fixes failures after long idle)
+  await notifyStart(webhook.botId);
 
   if (file) {
     // Upload file to CDN and send as media message
