@@ -4,7 +4,7 @@ import { botWebhooks, bots } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { ensurePollChain } from "@/lib/poll";
 import { sealWebhook } from "@/lib/seal";
-import { sendTextMessage, sendMediaMessage, notifyStart } from "@/lib/weixin/adapter";
+import { sendTextMessage, sendMediaMessage, fetchUpdates, updateGetUpdatesBuf } from "@/lib/weixin/adapter";
 import { uploadMedia } from "@/lib/weixin/media";
 
 const FILE_FIELDS = ["image", "audio", "video"] as const;
@@ -62,8 +62,17 @@ export async function POST(
 
   const toUserId = bot.ownerWxUserId;
 
-  // Ensure session is alive before sending (fixes failures after long idle)
-  await notifyStart(webhook.botId);
+  // Fetch updates first to establish/renew the iLink session before sending.
+  // Without this, sendmessage fails after long idle because the server-side session expired.
+  // The fetchUpdates call re-establishes the session context that sendmessage requires.
+  try {
+    const resp = await fetchUpdates(webhook.botId, bot.getUpdatesBuf || undefined);
+    if (resp.get_updates_buf) {
+      await updateGetUpdatesBuf(webhook.botId, resp.get_updates_buf);
+    }
+  } catch (err) {
+    console.error(`[webhook-send] fetchUpdates failed: ${err}`);
+  }
 
   if (file) {
     // Upload file to CDN and send as media message
