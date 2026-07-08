@@ -5,6 +5,8 @@ import { eq, and } from "drizzle-orm";
 import { ensurePollChain } from "@/lib/poll";
 import { sealWebhook } from "@/lib/seal";
 import { sendTextMessage, sendMediaMessage, fetchUpdates, updateGetUpdatesBuf } from "@/lib/weixin/adapter";
+
+const SESSION_EXPIRED_ERRCODE = -14;
 import { uploadMedia } from "@/lib/weixin/media";
 
 const FILE_FIELDS = ["image", "audio", "video"] as const;
@@ -63,10 +65,15 @@ export async function POST(
   const toUserId = bot.ownerWxUserId;
 
   // Fetch updates first to establish/renew the iLink session before sending.
-  // Without this, sendmessage fails after long idle because the server-side session expired.
-  // The fetchUpdates call re-establishes the session context that sendmessage requires.
+  // The server requires an active getUpdates context for sendmessage to work.
+  // If session expired (errcode -14), clear buf and retry with empty buf.
   try {
-    const resp = await fetchUpdates(webhook.botId, bot.getUpdatesBuf || undefined);
+    let resp = await fetchUpdates(webhook.botId, bot.getUpdatesBuf || undefined);
+    if (resp.errcode === SESSION_EXPIRED_ERRCODE) {
+      console.log(`[webhook-send] session expired, clearing buf and retrying`);
+      await updateGetUpdatesBuf(webhook.botId, "");
+      resp = await fetchUpdates(webhook.botId);
+    }
     if (resp.get_updates_buf) {
       await updateGetUpdatesBuf(webhook.botId, resp.get_updates_buf);
     }
