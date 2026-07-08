@@ -31,17 +31,15 @@ export async function pollAllBots() {
     }
 
     try {
-      // Notify server this bot is alive (keeps session active)
-      await notifyStart(bot.id);
-
       const buf = bot.getUpdatesBuf || undefined;
-      const resp = await fetchUpdates(bot.id, buf);
+      let resp = await fetchUpdates(bot.id, buf);
 
-      // Session expired — clear buf so next poll starts fresh
+      // Session expired — notify server and retry with empty buf
       if (resp.errcode === SESSION_EXPIRED_ERRCODE) {
-        console.log(`[poll] Bot ${bot.id} session expired (errcode -14), clearing buf`);
+        console.log(`[poll] Bot ${bot.id} session expired (errcode -14), notifying and retrying`);
+        await notifyStart(bot.id);
         await updateGetUpdatesBuf(bot.id, "");
-        continue;
+        resp = await fetchUpdates(bot.id);
       }
 
       if (resp.get_updates_buf) {

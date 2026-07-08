@@ -65,6 +65,9 @@ export const messages = sqliteTable("messages", {
   messageType: integer("message_type").notNull(),
   content: text("content").notNull(),
   responseBody: text("response_body"),
+  // Raw milliseconds (integer), NOT a Date. Compared with sentTime (Date.now())
+  // and ref_msg.create_time_ms from JSON — both are raw ms integers.
+  // Using { mode: "timestamp" } would break these cross-source comparisons.
   createTimeMs: integer("create_time_ms"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()

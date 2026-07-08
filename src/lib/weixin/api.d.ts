@@ -1,3 +1,6 @@
+// Manual type declarations for deep imports from @tencent-weixin/openclaw-weixin.
+// MUST be kept in sync with the package's dist/src/api/api.js exports manually.
+// scripts/sync-weixin-types.mjs syncs types.ts but NOT this file.
 declare module "@tencent-weixin/openclaw-weixin/dist/src/api/api.js" {
   export function getUpdates(
     params: import("./types").GetUpdatesReq &

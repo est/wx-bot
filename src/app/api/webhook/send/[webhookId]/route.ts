@@ -6,6 +6,7 @@ import { ensurePollChain } from "@/lib/poll";
 import { sealWebhook } from "@/lib/seal";
 import { sendTextMessage, sendMediaMessage, notifyStart } from "@/lib/weixin/adapter";
 import { uploadMedia } from "@/lib/weixin/media";
+import { buildMessageItems } from "@/lib/weixin/message-builder";
 
 const FILE_FIELDS = ["image", "audio", "video"] as const;
 
@@ -63,32 +64,15 @@ export async function POST(
   const toUserId = bot.ownerWxUserId;
 
   // Tell server this bot is alive. Session maintenance is the queue poll's job.
-  await notifyStart(webhook.botId);
+  // Non-fatal: if notifyStart fails, sendmessage might still work.
+  try { await notifyStart(webhook.botId); } catch (err) {
+    console.error(`[webhook-send] notifyStart failed (non-fatal): ${err}`);
+  }
 
   if (file) {
-    // Upload file to CDN and send as media message
     const buffer = Buffer.from(await file.arrayBuffer());
     const mediaRef = await uploadMedia(webhook.botId, buffer, file.type || "application/octet-stream", toUserId);
-
-    // Build message item based on field name
-    const mediaTypeMap: Record<string, number> = { image: 2, audio: 3, video: 5 };
-    const mediaType = mediaTypeMap[fileField!] || 4;
-
-    const items: any[] = [];
-    if (mediaType === 2) {
-      items.push({ type: 2, image_item: { media: mediaRef, ...(text ? { mid_size: buffer.length } : {}) } });
-    } else if (mediaType === 3) {
-      items.push({ type: 3, voice_item: { media: mediaRef, playtime: 0 } });
-    } else if (mediaType === 5) {
-      items.push({ type: 5, video_item: { media: mediaRef } });
-    } else {
-      items.push({ type: 4, file_item: { media: mediaRef, file_name: file.name } });
-    }
-    // Optional text caption
-    if (text) {
-      items.push({ type: 1, text_item: { text } });
-    }
-
+    const items = buildMessageItems(fileField!, mediaRef, file.name, buffer.length, text || undefined);
     await sendMediaMessage(webhook.botId, { toUserId, itemList: items });
   } else {
     // Text-only message
