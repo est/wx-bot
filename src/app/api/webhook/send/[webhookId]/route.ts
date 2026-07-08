@@ -4,9 +4,7 @@ import { botWebhooks, bots } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { ensurePollChain } from "@/lib/poll";
 import { sealWebhook } from "@/lib/seal";
-import { sendTextMessage, sendMediaMessage, fetchUpdates, updateGetUpdatesBuf } from "@/lib/weixin/adapter";
-
-const SESSION_EXPIRED_ERRCODE = -14;
+import { sendTextMessage, sendMediaMessage, notifyStart } from "@/lib/weixin/adapter";
 import { uploadMedia } from "@/lib/weixin/media";
 
 const FILE_FIELDS = ["image", "audio", "video"] as const;
@@ -64,22 +62,8 @@ export async function POST(
 
   const toUserId = bot.ownerWxUserId;
 
-  // Fetch updates first to establish/renew the iLink session before sending.
-  // The server requires an active getUpdates context for sendmessage to work.
-  // If session expired (errcode -14), clear buf and retry with empty buf.
-  try {
-    let resp = await fetchUpdates(webhook.botId, bot.getUpdatesBuf || undefined);
-    if (resp.errcode === SESSION_EXPIRED_ERRCODE) {
-      console.log(`[webhook-send] session expired, clearing buf and retrying`);
-      await updateGetUpdatesBuf(webhook.botId, "");
-      resp = await fetchUpdates(webhook.botId);
-    }
-    if (resp.get_updates_buf) {
-      await updateGetUpdatesBuf(webhook.botId, resp.get_updates_buf);
-    }
-  } catch (err) {
-    console.error(`[webhook-send] fetchUpdates failed: ${err}`);
-  }
+  // Tell server this bot is alive. Session maintenance is the queue poll's job.
+  await notifyStart(webhook.botId);
 
   if (file) {
     // Upload file to CDN and send as media message
