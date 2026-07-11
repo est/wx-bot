@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { botWebhooks, bots } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { botWebhooks, bots, messages } from "@/lib/db/schema";
+import { eq, and, desc } from "drizzle-orm";
 import { ensurePollChain } from "@/lib/poll";
 import { sealWebhook } from "@/lib/seal";
 import { sendTextMessage, sendMediaMessage, notifyStart } from "@/lib/weixin/adapter";
@@ -63,6 +63,15 @@ export async function POST(
 
   const toUserId = bot.ownerWxUserId;
 
+  // Look up latest context_token from messages table (set by queue poll from getUpdates).
+  // Official package caches this per-user; we query on demand.
+  const lastMsg = await db.query.messages.findFirst({
+    where: and(eq(messages.botId, webhook.botId), eq(messages.toUserId, toUserId)),
+    orderBy: (t, { desc }) => desc(t.id),
+    columns: { contextToken: true },
+  });
+  const contextToken = lastMsg?.contextToken || undefined;
+
   // Tell server this bot is alive. Session maintenance is the queue poll's job.
   // Non-fatal: if notifyStart fails, sendmessage might still work.
   try { await notifyStart(webhook.botId); } catch (err) {
@@ -73,13 +82,13 @@ export async function POST(
     const buffer = Buffer.from(await file.arrayBuffer());
     const mediaRef = await uploadMedia(webhook.botId, buffer, file.type || "application/octet-stream", toUserId);
     const items = buildMessageItems(fileField!, mediaRef, file.name, buffer.length, text || undefined);
-    await sendMediaMessage(webhook.botId, { toUserId, itemList: items });
+    await sendMediaMessage(webhook.botId, { toUserId, itemList: items, contextToken });
   } else {
     // Text-only message
     if (!text) {
       return NextResponse.json({ error: "Missing text" }, { status: 400 });
     }
-    await sendTextMessage(webhook.botId, { toUserId, text });
+    await sendTextMessage(webhook.botId, { toUserId, text, contextToken });
   }
 
   const sealed = sealWebhook({ botId: webhook.botId, sentTime: Date.now() });
