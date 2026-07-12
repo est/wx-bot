@@ -89,3 +89,18 @@ export const botWebhooks = sqliteTable("bot_webhooks", {
     .notNull()
     .$defaultFn(() => new Date()),
 });
+
+// Per-bot context_token cache for sendmessage. Each token can only be used ~10 times.
+export const botContextTokens = sqliteTable("bot_context_tokens", {
+  botId: text("bot_id")
+    .notNull()
+    .references(() => bots.id, { onDelete: "cascade" }),
+  toUserId: text("to_user_id").notNull(),
+  contextToken: text("context_token"),
+  useCount: integer("use_count").notNull().default(0),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+}, (table) => [
+  index("idx_bctx_bot_user").on(table.botId, table.toUserId),
+]);

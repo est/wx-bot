@@ -1,8 +1,8 @@
 import { db } from "@/lib/db";
-import { bots, messages } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { bots, messages, botContextTokens } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { send } from "@vercel/queue";
-import { fetchUpdates, notifyStart, updateGetUpdatesBuf } from "@/lib/weixin/adapter";
+import { fetchUpdates, notifyStart, updateGetUpdatesBuf, sendTypingIndicator } from "@/lib/weixin/adapter";
 
 const ACTIVE_THRESHOLD_MS = 30_000;
 const POLL_INTERVAL_SEC = 120;
@@ -31,6 +31,11 @@ export async function pollAllBots() {
     }
 
     try {
+      // Keep session alive by sending typing indicator to owner
+      if (bot.ownerWxUserId) {
+        try { await sendTypingIndicator(bot.id, bot.ownerWxUserId); } catch {}
+      }
+
       const buf = bot.getUpdatesBuf || undefined;
       let resp = await fetchUpdates(bot.id, buf);
 
@@ -65,6 +70,17 @@ export async function pollAllBots() {
             content,
             createTimeMs: refCreateMs || msg.create_time_ms || null,
           });
+
+          // Persist context_token for sendmessage (each token valid for ~10 uses)
+          if (msg.context_token && msg.from_user_id) {
+            await db
+              .insert(botContextTokens)
+              .values({ botId: bot.id, toUserId: msg.from_user_id, contextToken: msg.context_token, useCount: 0, updatedAt: new Date() })
+              .onConflictDoUpdate({
+                target: [botContextTokens.botId, botContextTokens.toUserId],
+                set: { contextToken: msg.context_token, useCount: 0, updatedAt: new Date() },
+              });
+          }
         }
       }
 

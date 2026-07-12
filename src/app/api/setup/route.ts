@@ -96,6 +96,15 @@ export async function GET(req: NextRequest) {
         accessed_at INTEGER,
         created_at INTEGER NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS bot_context_tokens (
+        bot_id TEXT NOT NULL REFERENCES bots(id) ON DELETE CASCADE,
+        to_user_id TEXT NOT NULL,
+        context_token TEXT,
+        use_count INTEGER NOT NULL DEFAULT 0,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (bot_id, to_user_id)
+      );
     `);
 
     return NextResponse.json({ ok: true, dropd: drop || null, message: "Database initialized" });
