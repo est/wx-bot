@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { botWebhooks, bots, botContextTokens } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { botWebhooks, bots, messages } from "@/lib/db/schema";
+import { eq, and, desc } from "drizzle-orm";
 import { ensurePollChain } from "@/lib/poll";
 import { sealWebhook } from "@/lib/seal";
 import { sendTextMessage, sendMediaMessage, notifyStart } from "@/lib/weixin/adapter";
@@ -63,15 +63,14 @@ export async function POST(
 
   const toUserId = bot.ownerWxUserId;
 
-  // Look up context_token from dedicated cache table (updated by queue poll).
-  // TODO: context_token may have a ~10 reply limit. If webhook stops working after
-  // exactly 10 sends, uncomment the use_count check below and enable the counter
-  // increment after send. For now, always use the cached context_token.
-  // const MAX_CONTEXT_USES = 10;
-  const ctxRow = await db.query.botContextTokens.findFirst({
-    where: and(eq(botContextTokens.botId, webhook.botId), eq(botContextTokens.toUserId, toUserId)),
+  // Look up latest context_token from messages table (set by queue poll from getUpdates).
+  // context_token is stored per-message; just grab the most recent one.
+  const lastMsg = await db.query.messages.findFirst({
+    where: and(eq(messages.botId, webhook.botId), eq(messages.toUserId, toUserId)),
+    orderBy: (t, { desc }) => desc(t.id),
+    columns: { contextToken: true },
   });
-  const contextToken = ctxRow?.contextToken || undefined;
+  const contextToken = lastMsg?.contextToken || undefined;
 
   // Tell server this bot is alive. Session maintenance is the queue poll's job.
   // Non-fatal: if notifyStart fails, sendmessage might still work.
@@ -90,13 +89,6 @@ export async function POST(
     }
     await sendTextMessage(webhook.botId, { toUserId, text, contextToken });
   }
-
-  // TODO: uncomment when use_count check is enabled above
-  // if (contextToken && ctxRow) {
-  //   await db.update(botContextTokens)
-  //     .set({ useCount: ctxRow.useCount + 1 })
-  //     .where(and(eq(botContextTokens.botId, webhook.botId), eq(botContextTokens.toUserId, toUserId)));
-  // }
 
   const sealed = sealWebhook({ botId: webhook.botId, sentTime: Date.now() });
   console.log(`[webhook-send] botId=${webhook.botId} len=${text.length} file=${file?.name || "none"}`);
